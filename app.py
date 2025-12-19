@@ -1,10 +1,9 @@
 import streamlit as st
 from pyradios import RadioBrowser
 
-# Konfiguracja – duże i czytelne
 st.set_page_config(page_title="Proste Radio + Gazetki", layout="wide")
 st.markdown("<h1 style='text-align: center; font-size: 50px;'>🎵 Proste Radio i Gazetki 🛒</h1>", unsafe_allow_html=True)
-st.markdown("<p style='text-align: center; font-size: 30px;'>Kliknij przycisk poniżej – radio gra od razu! 😊</p>", unsafe_allow_html=True)
+st.markdown("<p style='text-align: center; font-size: 30px;'>Kliknij przycisk – gra od razu! 😊</p>", unsafe_allow_html=True)
 
 tab1, tab2 = st.tabs(["🎵 Radio Online", "🛒 Gazetki Promocyjne"])
 
@@ -48,21 +47,20 @@ with tab1:
                 use_container_width=True,
                 type="primary" if is_active else "secondary"
             ):
-                st.session_state.current_name = station['name']
-                st.session_state.current_url = fallback_stations[station['name']]
+                name = station['name']
+                st.session_state.current_name = name
+                st.session_state.current_url = fallback_stations[name]
                 st.rerun()
 
     st.markdown("---")
     st.markdown("<h3 style='text-align: center; font-size: 32px;'>🔍 Wyszukaj inną stację (opcjonalnie)</h3>", unsafe_allow_html=True)
-    query = st.text_input("Szukaj", placeholder="Wpisz np. RMF, ZET, Jedynka...", label_visibility="hidden")
+    query = st.text_input("Szukaj", value=st.session_state.get('query', ''), placeholder="Wpisz np. RMF, ZET...", label_visibility="hidden")
 
-    # Opcjonalne wyszukiwanie w API (tylko HTTPS)
     selected_url = st.session_state.get('current_url')
     current_name = st.session_state.get('current_name')
 
     if query:
-        mirror_list = ["https://de1.api.radio-browser.info", "https://de2.api.radio-browser.info", "https://nl1.api.radio-browser.info"]
-        found = False
+        mirror_list = ["https://de1.api.radio-browser.info", "https://de2.api.radio-browser.info"]
         for mirror in mirror_list:
             try:
                 rb = RadioBrowser(base_url=mirror)
@@ -71,16 +69,15 @@ with tab1:
                 if https_results:
                     selected_url = https_results[0]['url_resolved']
                     current_name = https_results[0]['name']
-                    st.success("Znaleziono działający stream! 🚀")
-                    found = True
+                    st.success("Znaleziono działający stream!")
                     break
             except:
                 continue
-        if not found:
-            st.info("Nie znaleziono w API – używam sprawdzonego streamu z ulubionych")
 
-    # Player
     if selected_url and current_name:
+        st.session_state.current_url = selected_url
+        st.session_state.current_name = current_name
+
         st.markdown(f"<h2 style='text-align: center; font-size: 45px;'>🔊 Gra: <strong>{current_name}</strong></h2>", unsafe_allow_html=True)
 
         unique = f"<!-- PLAYING: {current_name} -->"
@@ -94,14 +91,13 @@ with tab1:
         """, height=180)
 
         if st.button("⏹ ZATRZYMAJ RADIO", use_container_width=True):
-            for key in ['current_url', 'current_name']:
+            for key in ['current_url', 'current_name', 'query']:
                 if key in st.session_state:
                     del st.session_state[key]
             st.rerun()
     else:
-        st.info("Kliknij jeden z przycisków powyżej – radio zacznie grać!")
+        st.info("Kliknij przycisk powyżej – radio zacznie grać!")
 
-# Gazetki – aktualne podglądy
 with tab2:
     st.header("🛒 Gazetki Promocyjne – grudzień 2025")
     st.markdown("<p style='text-align: center; font-size: 30px;'>Kliknij kafelek!</p>", unsafe_allow_html=True)
@@ -132,4 +128,4 @@ with tab2:
                 </div>
             """, unsafe_allow_html=True)
 
-st.sidebar.success("Apka gotowa – wszystko działa idealnie! ❤️")
+st.sidebar.success("Teraz wszystko gra – nawet Polskie Radio! ❤️")
