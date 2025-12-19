@@ -11,15 +11,15 @@ tab1, tab2 = st.tabs(["🎵 Radio Online", "🛒 Gazetki Promocyjne"])
 # Fallback stacje (aktualne URL-e 2025)
 fallback_stations = [
     {"name": "RMF FM", "url_resolved": "https://stream.rmf.fm/rmf_fm", "tags": "pop, hits", "bitrate": 128},
-    {"name": "RMF Classic", "url_resolved": "https://stream.rmf.fm/rmf_classic", "tags": "classical, film", "bitrate": 128},
+    {"name": "RMF Classic", "url_resolved": "https://stream.rmf.fm/rmf_classic", "tags": "classical, film music", "bitrate": 128},
     {"name": "Radio ZET", "url_resolved": "https://stream.radiozet.pl/live", "tags": "pop", "bitrate": 128},
     {"name": "VOX FM", "url_resolved": "https://stream.voxfm.pl/voxfm", "tags": "hits", "bitrate": 128},
     {"name": "Eska", "url_resolved": "https://stream.eska.pl/eska", "tags": "pop, dance", "bitrate": 128},
     {"name": "Antyradio", "url_resolved": "https://stream.antyradio.pl/antyradio", "tags": "rock", "bitrate": 128},
-    {"name": "Złote Przeboje", "url_resolved": "https://stream.open.fm/74", "tags": "oldies", "bitrate": 128},
-    {"name": "Polskie Radio Jedynka", "url_resolved": "https://stream.polskieradio.pl/pr1", "tags": "news", "bitrate": 128},
-    {"name": "Polskie Radio Dwójka", "url_resolved": "https://stream.polskieradio.pl/pr2", "tags": "classical", "bitrate": 128},
-    {"name": "Polskie Radio Trójka", "url_resolved": "https://stream.polskieradio.pl/pr3", "tags": "alternative", "bitrate": 128},
+    {"name": "Złote Przeboje", "url_resolved": "https://stream.open.fm/74", "tags": "oldies, 80s, 90s, 00s", "bitrate": 128},
+    {"name": "Polskie Radio Jedynka", "url_resolved": "https://stream.polskieradio.pl/sls/1/pr1.aac", "tags": "news, talk", "bitrate": 128},
+    {"name": "Polskie Radio Dwójka", "url_resolved": "https://stream.polskieradio.pl/sls/1/pr2.aac", "tags": "classical", "bitrate": 128},
+    {"name": "Polskie Radio Trójka", "url_resolved": "https://stream.polskieradio.pl/sls/1/pr3.aac", "tags": "music, alternative", "bitrate": 128},
 ]
 
 with tab1:
