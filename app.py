@@ -26,16 +26,33 @@ with tab1:
 
     query = st.text_input("Szukaj stacji (np. RMF, ZET, Trójka):", key="radio_search")
 
+    # Lista stabilnych mirrorów API (możesz dodać więcej jeśli chcesz)
+    possible_urls = [
+        "https://de1.api.radio-browser.info",
+        "https://de2.api.radio-browser.info",
+        "https://nl1.api.radio-browser.info",
+        "https://at1.api.radio-browser.info",
+    ]
+
     stations = None
-    try:
-        rb = RadioBrowser()
-        if query:
-            stations = rb.search(name=query, country="Poland", limit=50, order="clickcount", reverse=True)
-        else:
-            stations = rb.search(country="Poland", limit=50, order="clickcount", reverse=True)
-        st.success("Połączono z API – aktualne stacje!")
-    except Exception as e:
-        st.warning(f"Problem z API (timeout lub brak sieci): {str(e)}. Ładuję listę zapasową – działa zawsze!")
+    connected_base = None
+
+    for base in possible_urls:
+        try:
+            rb = RadioBrowser(base_url=base)
+            if query:
+                stations = rb.search(name=query, country="Poland", limit=50, order="clickcount", reverse=True)
+            else:
+                stations = rb.search(country="Poland", limit=50, order="clickcount", reverse=True)
+            st.success(f"Połączono z API ({base}) – aktualne stacje! 🚀")
+            connected_base = base
+            break
+        except Exception as e:
+            st.info(f"Mirror {base} nie działa: {str(e)} – próbuję następny...")
+            continue
+
+    if stations is None:
+        st.warning("Wszystkie mirrory API niedostępne. Ładuję listę zapasową – działa zawsze!")
         stations = fallback_stations
 
     if not stations:
@@ -58,7 +75,7 @@ with tab1:
                 </audio>
             """, height=100)
 
-# Zakładka Gazetki – bez zmian (z poprzedniego kodu)
+# Zakładka Gazetki – bez zmian
 with tab2:
     st.header("🛒 Gazetki Promocyjne – Linki Oficjalne")
     st.markdown("Kliknij logo → oficjalna gazetka!")
@@ -89,4 +106,4 @@ with tab2:
                 </div>
             """, unsafe_allow_html=True)
 
-st.sidebar.success("Appka stabilna – działa nawet bez internetu do API! 🚀")
+st.sidebar.success("Appka super stabilna – automatycznie wybiera działający serwer API! 🚀")
