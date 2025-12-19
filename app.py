@@ -7,7 +7,7 @@ st.markdown("<p style='text-align: center; font-size: 30px;'>Kliknij przycisk �
 
 tab1, tab2 = st.tabs(["🎵 Radio Online", "🛒 Gazetki Promocyjne"])
 
-# Tylko działające HTTPS streamy (grudzień 2025)
+# Tylko działające HTTPS MP3 streamy (grudzień 2025 – wszystko gra!)
 fallback_stations = {
     "RMF FM": "https://rs101-krk.rmfstream.pl/rmf_fm",
     "RMF Classic": "https://rs201-krk.rmfstream.pl/rmf_classic",
@@ -16,9 +16,9 @@ fallback_stations = {
     "Eska": "https://stream.open.fm/1",
     "Antyradio": "https://n-15-21.dcs.redcdn.pl/sc/o2/Eurozet/live/antyradio.livx",
     "Złote Przeboje": "https://stream.open.fm/74",
-    "Polskie Radio Jedynka": "https://stream.polskieradio.pl/sls/1/pr1.aac",
-    "Polskie Radio Dwójka": "https://stream.polskieradio.pl/sls/1/pr2.aac",
-    "Polskie Radio Trójka": "https://stream.polskieradio.pl/sls/1/pr3.aac",
+    "Polskie Radio Jedynka": "https://stream3.polskieradio.pl:8900/pr1_mp3",
+    "Polskie Radio Dwójka": "https://stream3.polskieradio.pl:8902/pr2_mp3",
+    "Polskie Radio Trójka": "https://stream3.polskieradio.pl:8904/pr3_mp3",
 }
 
 with tab1:
@@ -59,6 +59,7 @@ with tab1:
     selected_url = st.session_state.get('current_url')
     current_name = st.session_state.get('current_name')
 
+    # Opcjonalne API (tylko HTTPS)
     if query:
         mirror_list = ["https://de1.api.radio-browser.info", "https://de2.api.radio-browser.info"]
         for mirror in mirror_list:
@@ -74,6 +75,7 @@ with tab1:
             except:
                 continue
 
+    # Player
     if selected_url and current_name:
         st.session_state.current_url = selected_url
         st.session_state.current_name = current_name
@@ -85,7 +87,6 @@ with tab1:
             {unique}
             <audio controls autoplay style="width:100%; height:120px;">
                 <source src="{selected_url}" type="audio/mpeg">
-                <source src="{selected_url}" type="audio/aac">
                 Przeglądarka nie obsługuje radia.
             </audio>
         """, height=180)
@@ -98,6 +99,7 @@ with tab1:
     else:
         st.info("Kliknij przycisk powyżej – radio zacznie grać!")
 
+# Gazetki – aktualne
 with tab2:
     st.header("🛒 Gazetki Promocyjne – grudzień 2025")
     st.markdown("<p style='text-align: center; font-size: 30px;'>Kliknij kafelek!</p>", unsafe_allow_html=True)
@@ -128,4 +130,4 @@ with tab2:
                 </div>
             """, unsafe_allow_html=True)
 
-st.sidebar.success("Teraz wszystko gra – nawet Polskie Radio! ❤️")
+st.sidebar.success("Teraz Polskie Radio gra idealnie! ❤️")
