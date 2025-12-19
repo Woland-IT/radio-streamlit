@@ -1,29 +1,28 @@
 import streamlit as st
 from pyradios import RadioBrowser
 
-# Konfiguracja
 st.set_page_config(page_title="Proste Radio + Gazetki", layout="wide")
 st.markdown("<h1 style='text-align: center; font-size: 50px;'>🎵 Proste Radio i Gazetki 🛒</h1>", unsafe_allow_html=True)
-st.markdown("<p style='text-align: center; font-size: 30px;'>Kliknij dużą ikonę – gra od razu! 😊</p>", unsafe_allow_html=True)
+st.markdown("<p style='text-align: center; font-size: 30px;'>Kliknij kafelek – gra od razu! 😊</p>", unsafe_allow_html=True)
 
 tab1, tab2 = st.tabs(["🎵 Radio Online", "🛒 Gazetki Promocyjne"])
 
-# Fallback – tylko sprawdzone HTTPS streamy (grudzień 2025)
-fallback_stations = [
-    {"name": "RMF FM", "url_resolved": "https://rs101-krk.rmfstream.pl/rmf_fm", "tags": "pop, hits", "bitrate": 128},
-    {"name": "RMF Classic", "url_resolved": "https://rs201-krk.rmfstream.pl/rmf_classic", "tags": "classical, film", "bitrate": 128},
-    {"name": "Radio ZET", "url_resolved": "https://n-15-21.dcs.redcdn.pl/sc/o2/Eurozet/live/audio.livx", "tags": "pop", "bitrate": 128},
-    {"name": "VOX FM", "url_resolved": "https://ic2.smcdn.pl/3990-1.mp3", "tags": "hits", "bitrate": 128},
-    {"name": "Eska", "url_resolved": "https://stream.open.fm/1", "tags": "pop, dance", "bitrate": 128},
-    {"name": "Antyradio", "url_resolved": "https://n-15-21.dcs.redcdn.pl/sc/o2/Eurozet/live/antyradio.livx", "tags": "rock", "bitrate": 128},
-    {"name": "Złote Przeboje", "url_resolved": "https://stream.open.fm/74", "tags": "oldies", "bitrate": 128},
-    {"name": "Polskie Radio Jedynka", "url_resolved": "https://stream.polskieradio.pl/sls/1/pr1.aac", "tags": "news, talk", "bitrate": 128},
-    {"name": "Polskie Radio Dwójka", "url_resolved": "https://stream.polskieradio.pl/sls/1/pr2.aac", "tags": "classical", "bitrate": 128},
-    {"name": "Polskie Radio Trójka", "url_resolved": "https://stream.polskieradio.pl/sls/1/pr3.aac", "tags": "alternative", "bitrate": 128},
-]
+# Gwarantowane działające HTTPS streamy (fallback)
+fallback_stations = {
+    "RMF FM": "https://rs101-krk.rmfstream.pl/rmf_fm",
+    "RMF Classic": "https://rs201-krk.rmfstream.pl/rmf_classic",
+    "Radio ZET": "https://n-15-21.dcs.redcdn.pl/sc/o2/Eurozet/live/audio.livx",
+    "VOX FM": "https://ic2.smcdn.pl/3990-1.mp3",
+    "Eska": "https://stream.open.fm/1",
+    "Antyradio": "https://n-15-21.dcs.redcdn.pl/sc/o2/Eurozet/live/antyradio.livx",
+    "Złote Przeboje": "https://stream.open.fm/74",
+    "Polskie Radio Jedynka": "https://stream.polskieradio.pl/sls/1/pr1.aac",
+    "Polskie Radio Dwójka": "https://stream.polskieradio.pl/sls/1/pr2.aac",
+    "Polskie Radio Trójka": "https://stream.polskieradio.pl/sls/1/pr3.aac",
+}
 
 with tab1:
-    st.header("🇵🇱 Ulubione stacje – duże przyciski")
+    st.header("🇵🇱 Ulubione stacje – kliknij kafelek")
 
     favorite = [
         {"name": "RMF Classic", "emoji": "🎻"},
@@ -41,61 +40,79 @@ with tab1:
     cols = st.columns(2)
     for idx, s in enumerate(favorite):
         with cols[idx % 2]:
-            is_selected = st.session_state.get('current_name', '') == s['name']
-            if st.button(f"{s['emoji']} {s['name']}", key=f"fav_btn_{idx}", use_container_width=True, type="primary" if is_selected else "secondary"):
+            is_active = st.session_state.get('current_name') == s['name']
+            border_color = "4px solid #00ff00" if is_active else "2px solid #ddd"
+            box_shadow = "0 8px 20px rgba(0,255,0,0.4)" if is_active else "0 4px 10px rgba(0,0,0,0.1)"
+            bg_color = "#f0fff0" if is_active else "#ffffff"
+
+            st.markdown(f"""
+                <div style="text-align: center; padding: 20px; border: {border_color}; border-radius: 20px; 
+                            background-color: {bg_color}; box-shadow: {box_shadow}; margin-bottom: 20px;">
+                    <h2 style="font-size: 60px; margin: 0;">{s['emoji']}</h2>
+                    <p style="font-size: 32px; font-weight: bold; margin: 10px 0;">{s['name']}</p>
+                    {"<p style='color: green; font-size: 24px;'>▶ GRA!</p>" if is_active else ""}
+                </div>
+            """, unsafe_allow_html=True)
+
+            if st.button("Odtwórz", key=f"play_{idx}", use_container_width=True):
                 st.session_state.query = s['name']
                 st.rerun()
 
-    st.markdown("<h2 style='font-size: 40px; text-align: center;'>🔍 Wyszukaj stację</h2>", unsafe_allow_html=True)
-    query = st.text_input("Szukaj", value=st.session_state.get('query', ''), placeholder="Wpisz np. RMF, ZET...", label_visibility="hidden")
+    st.markdown("---")
+    st.markdown("<h2 style='font-size: 40px; text-align: center;'>🔍 Wyszukaj inną stację</h2>", unsafe_allow_html=True)
+    query = st.text_input("Szukaj", value=st.session_state.get('query', ''), placeholder="Wpisz nazwę...", label_visibility="hidden")
 
-    # API z filtracją tylko HTTPS
-    stations = fallback_stations
-    mirror_list = ["https://de1.api.radio-browser.info", "https://de2.api.radio-browser.info", "https://nl1.api.radio-browser.info", "https://at1.api.radio-browser.info"]
+    # Szukanie działającego HTTPS streamu
+    stations = []
+    selected_url = fallback_stations.get(st.session_state.get('current_name'))  # domyślny fallback
 
-    connected = False
-    for mirror in mirror_list:
-        try:
-            rb = RadioBrowser(base_url=mirror)
-            api_stations = rb.search(name=query if query else None, country="Poland" if not query else None, limit=50, order="clickcount", reverse=True)
-            https_stations = [s for s in api_stations if s['url_resolved'].startswith('https://')]
-            if https_stations:
-                stations = https_stations
-                st.success(f"API działa – tylko bezpieczne HTTPS! 🚀")
-                connected = True
-                break
-        except:
-            continue
+    mirror_list = ["https://de1.api.radio-browser.info", "https://de2.api.radio-browser.info", "https://nl1.api.radio-browser.info"]
 
-    if not connected:
-        st.warning("API nie dało HTTPS – używam sprawdzonej listy!")
+    if query or 'query' in st.session_state:
+        search_name = query or st.session_state.query
+        found = False
+        for mirror in mirror_list:
+            try:
+                rb = RadioBrowser(base_url=mirror)
+                api_results = rb.search(name=search_name, country="Poland", limit=30, order="clickcount", reverse=True)
+                https_results = [s for s in api_results if s['url_resolved'].startswith('https://')]
+                if https_results:
+                    stations = https_results
+                    st.success("Znaleziono działające stacje! 🚀")
+                    found = True
+                    break
+            except:
+                continue
+        if not found:
+            st.warning("Nie znaleziono w API – używam sprawdzonego streamu")
 
-    # Bezpieczny selectbox
-    if not stations:
-        st.error("Brak stacji.")
-    else:
+    # Jeśli nie ma wyników z API – używamy fallback dla wybranej stacji
+    if not stations and 'current_name' in st.session_state:
+        name = st.session_state.current_name
+        if name in fallback_stations:
+            selected_url = fallback_stations[name]
+
+    # Lista stacji (jeśli API coś znalazło)
+    if stations:
         station_names = [f"{s['name']} ({s.get('tags', 'brak')} | {s.get('bitrate', '?')} kbps)" for s in stations]
         default_idx = 0
-        if 'current_name' in st.session_state:
-            for i, s in enumerate(stations):
-                if s['name'] == st.session_state.current_name:
-                    default_idx = i
-                    break
+        selected_idx = st.selectbox("Dostępne wersje:", options=range(len(station_names)), index=default_idx, format_func=lambda i: station_names[i])
+        selected_station = stations[selected_idx]
+        selected_url = selected_station['url_resolved']
+        st.session_state.current_name = selected_station['name']
+    elif 'current_name' in st.session_state:
+        st.session_state.current_name = st.session_state.current_name  # zachowujemy nazwę
 
-        selected_idx = st.selectbox("Wybierz stację:", options=range(len(station_names)), index=default_idx, format_func=lambda i: station_names[i])
+    # Player
+    if 'current_name' in st.session_state and selected_url:
+        st.markdown(f"<h2 style='text-align: center; font-size: 45px;'>🔊 Gra: <strong>{st.session_state.current_name}</strong></h2>", unsafe_allow_html=True)
 
-        selected = stations[selected_idx]
-        st.session_state.current_url = selected['url_resolved']
-        st.session_state.current_name = selected['name']
-
-        st.markdown(f"<h2 style='text-align: center; font-size: 45px;'>🔊 Gra: <strong>{selected['name']}</strong></h2>", unsafe_allow_html=True)
-
-        unique = f"<!-- {selected['name']} -->"
+        unique = f"<!-- PLAYING: {st.session_state.current_name} -->"
         st.components.v1.html(f"""
             {unique}
             <audio controls autoplay style="width:100%; height:120px;">
-                <source src="{selected['url_resolved']}" type="audio/mpeg">
-                Przeglądarka nie obsługuje radia.
+                <source src="{selected_url}" type="audio/mpeg">
+                Twoja przeglądarka nie obsługuje radia.
             </audio>
         """, height=180)
 
@@ -104,11 +121,12 @@ with tab1:
                 if key in st.session_state:
                     del st.session_state[key]
             st.rerun()
+    else:
+        st.info("Wybierz stację z kafelka powyżej")
 
+# Gazetki – aktualne podglądy
 with tab2:
-    st.header("🛒 Gazetki Promocyjne – Aktualne (grudzień 2025)")
-    st.markdown("<p style='text-align: center; font-size: 30px;'>Kliknij kafelek!</p>", unsafe_allow_html=True)
-
+    st.header("🛒 Gazetki Promocyjne – grudzień 2025")
     promotions = [
         {"name": "Biedronka", "thumbnail": "https://gazetka-oferta.com/wp-content/uploads/2025/12/biedronka-17122025-2d6d4d.webp", "url": "https://www.biedronka.pl/gazetki"},
         {"name": "Lidl", "thumbnail": "https://lidl.gazetkapromocyjna.com.pl/storage/images/shops/content/image_68284e8a6599b.webp", "url": "https://www.lidl.pl/c/nasze-gazetki/s10008614"},
@@ -127,12 +145,12 @@ with tab2:
     for idx, promo in enumerate(promotions):
         with cols[idx % 3]:
             st.markdown(f"""
-                <div style="text-align: center; margin-bottom: 40px; border: 3px solid #eee; border-radius: 15px; padding: 15px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
+                <div style="text-align: center; margin-bottom: 40px;">
                     <a href="{promo['url']}" target="_blank">
-                        <img src="{promo['thumbnail']}" width="250" style="border-radius: 10px;">
-                        <p style="margin: 15px 0 0; font-weight: bold; font-size: 30px;">{promo['name']}</p>
+                        <img src="{promo['thumbnail']}" width="250" style="border-radius: 15px; box-shadow: 0 6px 15px rgba(0,0,0,0.2);">
+                        <p style="margin: 15px 0 0; font-weight: bold; font-size: 32px;">{promo['name']}</p>
                     </a>
                 </div>
             """, unsafe_allow_html=True)
 
-st.sidebar.success("Apka gotowa – wszystko gra! ❤️")
+st.sidebar.success("Gotowe! Wszystko gra i świeci! ❤️")
