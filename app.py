@@ -10,16 +10,16 @@ tab1, tab2 = st.tabs(["🎵 Radio Online", "🛒 Gazetki Promocyjne"])
 
 # Fallback stacje (aktualne URL-e 2025)
 fallback_stations = [
-    {"name": "RMF Classic", "url_resolved": "https://rs201-krk.rmfstream.pl/rmf_classic", "tags": "classical, film", "bitrate": 128},
+    {"name": "RMF FM", "url_resolved": "https://stream.rmf.fm/rmf_fm", "tags": "pop, hits", "bitrate": 128},
+    {"name": "RMF Classic", "url_resolved": "https://stream.rmf.fm/rmf_classic", "tags": "classical, film", "bitrate": 128},
+    {"name": "Radio ZET", "url_resolved": "https://stream.radiozet.pl/live", "tags": "pop", "bitrate": 128},
+    {"name": "VOX FM", "url_resolved": "https://stream.voxfm.pl/voxfm", "tags": "hits", "bitrate": 128},
+    {"name": "Eska", "url_resolved": "https://stream.eska.pl/eska", "tags": "pop, dance", "bitrate": 128},
+    {"name": "Antyradio", "url_resolved": "https://stream.antyradio.pl/antyradio", "tags": "rock", "bitrate": 128},
     {"name": "Złote Przeboje", "url_resolved": "https://stream.open.fm/74", "tags": "oldies", "bitrate": 128},
-    {"name": "Polskie Radio Trójka", "url_resolved": "http://mp3.polskieradio.pl:8904/;stream.mp3", "tags": "alternative", "bitrate": 128},
-    {"name": "Polskie Radio Dwójka", "url_resolved": "http://mp3.polskieradio.pl:8902/;stream.mp3", "tags": "classical", "bitrate": 128},
-    {"name": "Polskie Radio Jedynka", "url_resolved": "http://mp3.polskieradio.pl:8900/;stream.mp3", "tags": "news", "bitrate": 128},
-    {"name": "RMF FM", "url_resolved": "https://rs101-krk.rmfstream.pl/rmf_fm", "tags": "pop", "bitrate": 128},
-    {"name": "Radio ZET", "url_resolved": "https://n-15-21.dcs.redcdn.pl/sc/o2/Eurozet/live/audio.livx", "tags": "pop", "bitrate": 128},
-    {"name": "VOX FM", "url_resolved": "https://ic2.smcdn.pl/3990-1.mp3", "tags": "hits", "bitrate": 128},
-    {"name": "Eska", "url_resolved": "https://stream.open.fm/1", "tags": "dance", "bitrate": 128},
-    {"name": "Antyradio", "url_resolved": "https://n-15-21.dcs.redcdn.pl/sc/o2/Eurozet/live/antyradio.livx", "tags": "rock", "bitrate": 128},
+    {"name": "Polskie Radio Jedynka", "url_resolved": "https://stream.polskieradio.pl/pr1", "tags": "news", "bitrate": 128},
+    {"name": "Polskie Radio Dwójka", "url_resolved": "https://stream.polskieradio.pl/pr2", "tags": "classical", "bitrate": 128},
+    {"name": "Polskie Radio Trójka", "url_resolved": "https://stream.polskieradio.pl/pr3", "tags": "alternative", "bitrate": 128},
 ]
 
 with tab1:
