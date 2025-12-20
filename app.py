@@ -48,75 +48,50 @@ with tab1:
     st.header("🇵🇱 Polskie Radio Online – Proste i Przyjazne")
     st.markdown("Wybierz z ulubionych lub wyszukaj nową stację. Dodaj do ulubionych, by szybko wracać!")
 
-    # Sekcja Ulubione
+    # Sekcja Ulubione – NAPRAWIONA
     st.subheader("❤️ Moje Ulubione Stacje")
     favorites = get_favorites()
+    
     if favorites:
-        favorite_names = [f"{name} ({tags} | {bitrate} kbps)" for name, url, tags, bitrate in favorites]
-        selected_fav_idx = st.selectbox("Wybierz ulubioną stację:", range(len(favorite_names)), format_func=lambda i: favorite_names[i], key="fav_select")
+        # Bezpieczne rozpakowanie – na wypadek starych rekordów z mniejszą liczbą pól
+        favorite_display = []
+        favorite_dicts = []
         
-        if selected_fav_idx is not None:
-            selected_fav = favorites[selected_fav_idx]
-            url = selected_fav[1]
-            st.markdown(f"### 🎶 Słuchasz: **{selected_fav[0]}**")
-            st.markdown(f"Tagi: {selected_fav[2]} • Bitrate: {selected_fav[3]} kbps")
-            
-            st.components.v1.html(f"""
-                <audio controls autoplay style="width:100%;">
-                    <source src="{url}" type="audio/mpeg">
-                    <source src="{url}" type="audio/aac">
-                    Twoja przeglądarka nie obsługuje audio.
-                </audio>
-            """, height=100)
-            
-            if st.button("Usuń z ulubionych", key=f"remove_{selected_fav[0]}"):
-                remove_favorite(selected_fav[0])
-                st.experimental_rerun()
+        for row in favorites:
+            # row może mieć 3 lub 4 elementy (stare rekordy miały tylko name, url, tags)
+            name = row[0]
+            url = row[1]
+            tags = row[2] if len(row) > 2 else "brak"
+            bitrate = row[3] if len(row) > 3 else 128  # domyślna wartość
+            favorite_display.append(f"{name} ({tags} | {bitrate} kbps)")
+            favorite_dicts.append({"name": name, "url_resolved": url, "tags": tags, "bitrate": bitrate})
+        
+        selected_fav_idx = st.selectbox(
+            "Wybierz ulubioną stację:",
+            range(len(favorite_display)),
+            format_func=lambda i: favorite_display[i],
+            key="fav_select"
+        )
+        
+        selected_fav = favorite_dicts[selected_fav_idx]
+        url = selected_fav["url_resolved"]
+        
+        st.markdown(f"### 🎶 Słuchasz: **{selected_fav['name']}**")
+        st.markdown(f"Tagi: {selected_fav['tags']} • Bitrate: {selected_fav['bitrate']} kbps")
+        
+        # Odtwarzacz audio – prosty, działa na wszystkich urządzeniach
+        st.audio(url, format="audio/mpeg", start_time=0)
+        
+        # Opcjonalnie: duży, wyraźny komunikat dla seniora
+        st.markdown("### 🔊 Odtwarzanie trwa... Jeśli nie słychać, naciśnij przycisk play powyżej 🔊")
+        
+        if st.button("Usuń z ulubionych", key=f"remove_{selected_fav['name']}"):
+            remove_favorite(selected_fav['name'])
+            st.success("Usunięto z ulubionych!")
+            st.experimental_rerun()
     else:
-        st.info("Brak ulubionych stacji. Dodaj je z listy poniżej!")
+        st.info("Brak ulubionych stacji. Znajdź stację poniżej i dodaj do ulubionych ❤️")
 
-    # Wyszukiwanie stacji
-    st.subheader("🔍 Szukaj Nowych Stacji")
-    query = st.text_input("Wpisz nazwę stacji (np. RMF, ZET):", key="radio_search")
-
-    stations = None
-    try:
-        rb = RadioBrowser()
-        if query:
-            stations = rb.search(name=query, country="Poland", limit=50, order="clickcount", reverse=True)
-        else:
-            stations = rb.search(country="Poland", limit=50, order="clickcount", reverse=True)
-        st.success("Połączono z bazą stacji – świeże dane!")
-    except Exception as e:
-        st.warning(f"Problem z połączeniem: {str(e)}. Używam listy zapasowej!")
-        stations = fallback_stations if not query else [s for s in fallback_stations if query.lower() in s['name'].lower()]
-
-    if not stations:
-        st.error("Nie znaleziono stacji. Spróbuj innego wyszukiwania.")
-    else:
-        station_names = [f"{s['name']} ({s.get('tags', 'brak')} | {s.get('bitrate', '?')} kbps)" for s in stations]
-        selected_idx = st.selectbox("Wybierz stację do odsłuchu:", range(len(station_names)), format_func=lambda i: station_names[i], key="station_select")
-
-        if selected_idx is not None:
-            selected = stations[selected_idx]
-            url = selected['url_resolved']
-            st.markdown(f"### 🎶 Słuchasz: **{selected['name']}**")
-            st.markdown(f"Tagi: {selected.get('tags', 'brak')} • Bitrate: {selected.get('bitrate', '?')} kbps")
-            
-            st.components.v1.html(f"""
-                <audio controls autoplay style="width:100%;">
-                    <source src="{url}" type="audio/mpeg">
-                    <source src="{url}" type="audio/aac">
-                    Twoja przeglądarka nie obsługuje audio.
-                </audio>
-            """, height=100)
-            
-            if st.button("Dodaj do ulubionych ❤️", key=f"add_{selected['name']}"):
-                if add_favorite(selected):
-                    st.success("Dodano do ulubionych!")
-                    st.experimental_rerun()
-                else:
-                    st.error("Nie udało się dodać – może już jest w ulubionych?")
 
 with tab2:
     st.header("🛒 Gazetki Promocyjne – Łatwy Dostęp")
