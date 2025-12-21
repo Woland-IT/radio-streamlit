@@ -126,25 +126,39 @@ with tab1:
         st.info("Brak ulubionych stacji. Dodaj je z kafelków poniżej!")
 
     # Wybrana stacja – odtwarzacz
+        # Wybrana stacja – odtwarzacz (na górze, duży i wyraźny)
     if 'selected_station' in st.session_state:
         selected = st.session_state.selected_station
         url = selected['url_resolved']
-        st.markdown(f"### 🎶 Słuchasz: **{selected['name']}**")
-        st.markdown(f"Tagi: {selected.get('tags', 'brak')} • Bitrate: {selected.get('bitrate', '?')} kbps")
         
+        st.markdown(f"## 🎶 Teraz gramy: **{selected['name']}**")
+        st.markdown(f"**Tagi:** {selected.get('tags', 'brak')} • **Bitrate:** {selected.get('bitrate', '?')} kbps")
+        
+        # Duży odtwarzacz
         st.audio(url, format="audio/mpeg")
-        st.caption("Jeśli nie słychać dźwięku – naciśnij Play 🔘 lub odśwież stronę")
         
+        # Wyraźny komunikat dla seniora
+        st.markdown("""
+        <div style="background-color: #e6f7ff; padding: 20px; border-radius: 10px; text-align: center; font-size: 20px; margin: 20px 0;">
+            🔊 <strong>Jeśli nie słychać muzyki – naciśnij przycisk PLAY 🔘 powyżej!</strong><br>
+            Upewnij się, że głośność jest włączona w telefonie/komputerze.
+        </div>
+        """, unsafe_allow_html=True)
+        
+        # Przycisk dodaj do ulubionych
         fav_names = [f[0] for f in favorites]
         if selected['name'] not in fav_names:
-            if st.button("Dodaj do ulubionych ❤️", key=f"add_selected_{selected['name']}"):
+            if st.button("❤️ Dodaj do ulubionych (szybki dostęp)", key=f"add_selected_{selected['name']}"):
                 if add_favorite(selected):
                     st.success("Dodano do ulubionych!")
                     st.experimental_rerun()
-                else:
-                    st.error("Nie udało się dodać.")
         else:
-            st.markdown("Już w ulubionych ✅")
+            st.success("✅ Ta stacja jest już w Twoich ulubionych!")
+        
+        # Opcja powrotu
+        if st.button("🔙 Wybierz inną stację"):
+            del st.session_state.selected_station
+           st.experimental_rerun()
 
     # Wyszukiwanie i lista stacji – duże kolorowe kafelki, więcej stacji (limit 100)
     st.subheader("🔍 Przeglądaj Polskie Stacje Radio")
