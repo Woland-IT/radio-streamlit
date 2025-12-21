@@ -183,7 +183,7 @@ with tab1:
                             st.success("Dodano!")
                             st.rerun()
 
-# === ZAKŁADKA GAZETKI ===
+# === ZAKŁADKA GAZETKI – POPRAWIONE KAFELKI ===
 with tab2:
     st.header("🛒 Gazetki Promocyjne – Duże Kafelki")
     st.markdown("Kliknij kafelek sklepu → otwiera się oficjalna gazetka")
@@ -206,6 +206,7 @@ with tab2:
             align-items: center;
             justify-content: center;
             flex-direction: column;
+            cursor: pointer;
         }
         .shop-tile:hover {
             opacity: 0.9;
@@ -224,30 +225,29 @@ with tab2:
         {"name": "Empik", "image": "https://www.empik.com/static/img/empik-logo.svg", "url": "https://www.empik.com/promocje", "color": "#00ABA9"},
     ]
 
-    # Tworzymy 3 kolumny
+    # Tworzymy 3 stałe kolumny
     col1, col2, col3 = st.columns(3)
 
-    # Wypełniamy je po kolei
     for idx, promo in enumerate(promotions):
         color = promo.get("color", random.choice(metro_colors))
         
-        # Wybieramy kolumnę cyklicznie
+        # Przypisujemy do odpowiedniej kolumny
         if idx % 3 == 0:
-            col = col1
+            target_col = col1
         elif idx % 3 == 1:
-            col = col2
+            target_col = col2
         else:
-            col = col3
+            target_col = col3
         
-with col:
-    st.markdown(
-        f'<a href="{promo["url"]}" target="_blank" style="text-decoration: none;">'
-        f'<div class="shop-tile" style="background-color: {color};">'
-        f'<img src="{promo["image"]}" width="120" style="margin-bottom: 10px;">'
-        f'<div>{promo["name"]}</div>'
-        f'</div></a>',
-        unsafe_allow_html=True
-    )
+        with target_col:
+          st.markdown(
+              f'<a href="{promo["url"]}" target="_blank" style="text-decoration: none;">'
+              f'<div class="shop-tile" style="background-color: {color};">'
+              f'<img src="{promo["image"]}" width="120" style="margin-bottom: 10px;">'
+              f'<div>{promo["name"]}</div>'
+              f'</div></a>',
+              unsafe_allow_html=True
+          ))
 
 # === SIDEBAR – ODTWARZACZ RADIA ===
 with st.sidebar:
