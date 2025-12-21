@@ -31,16 +31,25 @@ def remove_favorite(name):
     c.execute("DELETE FROM favorites WHERE name=?", (name,))
     conn.commit()
 
-# Walidacja URL – tylko naprawdę niebezpieczne blokujemy, reszta przechodzi
+# Walidacja URL – filtrujemy problematyczne, ale NIE wymuszamy HTTPS (bo blokuje audio na HTTP)
 def safe_url(url):
-    if not url or any(x in url.lower() for x in ["localhost", "127.0.0.1"]):
+    if any(x in url for x in ["localhost", "127.0.0.1"]):
         return None
-    if url.startswith("http://"):
-        url = "https://" + url[7:]
     parsed = urllib.parse.urlparse(url)
     if not parsed.scheme or not parsed.netloc:
         return None
-    return url
+    return url  # Zachowujemy oryginalny protokół (HTTP dla strumieni)
+
+# Dynamiczny format audio
+def get_audio_format(url):
+    if url.endswith('.mp3') or '.mp3' in url:
+        return "audio/mpeg"
+    elif url.endswith('.aac') or '.aac' in url or '.aacp' in url:
+        return "audio/aac"
+    elif url.endswith('.m3u8') or '.m3u8' in url:
+        return "application/x-mpegURL"
+    else:
+        return "audio/mpeg"
 
 # Kolory w stylu Metro (Windows 8)
 metro_colors = [
@@ -175,6 +184,7 @@ with tab2:
     st.header("🛒 Gazetki Promocyjne – Duże Kafelki")
     st.markdown("Kliknij kafelek sklepu → otwiera się oficjalna gazetka")
 
+    # Styl kafelków sklepów
     st.markdown("""
     <style>
         .shop-tile {
@@ -219,53 +229,51 @@ with tab2:
                     <a href="{promo['url']}" target="_blank">
                         <div class="shop-tile" style="background-color: {color};">
                             <img src="{promo['image']}" width="120" style="margin-bottom: 10px;">
-                            <div>{promo['name']}</div>
+                            <p style="margin: 10px 0 0; font-weight: bold;">{promo['name']}</p>
                         </div>
                     </a>
                 </div>
             """, unsafe_allow_html=True)
 
-# === SIDEBAR – ODTWARZACZ RADIA (MIESZANY AAC/MP3) ===
+# === SIDEBAR – ODTWARZACZ RADIA ===
 with st.sidebar:
     st.header("🎵 Odtwarzacz Radia")
     if 'selected_station' in st.session_state:
         selected = st.session_state.selected_station
-        url = safe_url(selected['url_resolved'])
-        if url:
-            st.markdown(f"### Gra: **{selected['name']}**")
-            st.markdown(f"**Tagi:** {selected.get('tags', 'brak')} • **Bitrate:** {selected.get('bitrate', '?')} kbps")
-
-            # Mieszany odtwarzacz – próbuje MP3 i AAC jednocześnie
-            st.components.v1.html(f"""
-                <audio controls autoplay style="width:100%;">
-                    <source src="{url}" type="audio/mpeg">
-                    <source src="{url}" type="audio/aac">
-                    Twoja przeglądarka nie obsługuje audio.
-                </audio>
-            """, height=100)
-
-            st.markdown("""
-            <div style="background-color: #f0f8ff; padding: 15px; border-radius: 10px; text-align: center; font-size: 18px; margin: 15px 0;">
-                🔊 <strong>Nie słychać? Naciśnij PLAY 🔘!</strong><br>
-                Sprawdź głośność w telefonie/komputerze.
-            </div>
-            """, unsafe_allow_html=True)
-
-            fav_names = [f[0] for f in get_favorites()]
-            if selected['name'] not in fav_names:
-                if st.button("❤️ Dodaj do ulubionych", key="add_main"):
-                    if add_favorite(selected):
-                        st.success("Dodano!")
-                        st.rerun()
-            else:
-                st.success("✅ Już w ulubionych!")
-            
-            if st.button("🔙 Zatrzymaj radio"):
-                if 'selected_station' in st.session_state:
-                    del st.session_state.selected_station
-                st.rerun()
+        url = selected['url_resolved']
+        
+        st.markdown(f"### Gra: **{selected['name']}**")
+        st.markdown(f"**Tagi:** {selected.get('tags', 'brak')} • **Bitrate:** {selected.get('bitrate', '?')} kbps")
+        
+        # Mieszany odtwarzacz – MP3/AAC
+        st.components.v1.html(f"""
+            <audio controls autoplay style="width:100%;">
+                <source src="{url}" type="audio/mpeg">
+                <source src="{url}" type="audio/aac">
+                Twoja przeglądarka nie obsługuje audio.
+            </audio>
+        """, height=100)
+        
+        st.markdown("""
+        <div style="background-color: #f0f8ff; padding: 15px; border-radius: 10px; text-align: center; font-size: 18px; margin: 15px 0;">
+            🔊 <strong>Nie słychać? Naciśnij PLAY 🔘!</strong><br>
+            Sprawdź głośność w telefonie/komputerze.
+        </div>
+        """, unsafe_allow_html=True)
+        
+        fav_names = [f[0] for f in get_favorites()]
+        if selected['name'] not in fav_names:
+            if st.button("❤️ Dodaj do ulubionych", key="add_main"):
+                if add_favorite(selected):
+                    st.success("Dodano!")
+                    st.rerun()
         else:
-            st.error("Błędny link – wybierz inną stację.")
+            st.success("✅ Już w ulubionych!")
+        
+        if st.button("🔙 Zatrzymaj radio"):
+            if 'selected_station' in st.session_state:
+                del st.session_state.selected_station
+            st.rerun()
     else:
         st.info("Wybierz stację z kafelków po lewej.")
 
