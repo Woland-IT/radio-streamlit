@@ -3,13 +3,12 @@ from pyradios import RadioBrowser
 import sqlite3
 import random
 import urllib.parse
-import requests
 
-# Konfiguracja strony
+# Konfiguracja
 st.set_page_config(page_title="Radio + Gazetki dla Seniorów", layout="wide")
 
 # Baza danych ulubionych
-conn = sqlite3.connect('favorites.db', check_same_thread=False)
+conn = sqlite3.connect('favorites.db')
 c = conn.cursor()
 c.execute('''CREATE TABLE IF NOT EXISTS favorites
              (name TEXT PRIMARY KEY, url TEXT, tags TEXT, bitrate INTEGER)''')
@@ -32,7 +31,7 @@ def remove_favorite(name):
     c.execute("DELETE FROM favorites WHERE name=?", (name,))
     conn.commit()
 
-# Bezpieczny URL – usunęliśmy filtr "195.150.20" bo blokował dobre stacje
+# Walidacja URL – tylko naprawdę niebezpieczne blokujemy, reszta przechodzi
 def safe_url(url):
     if not url or any(x in url.lower() for x in ["localhost", "127.0.0.1"]):
         return None
@@ -43,79 +42,38 @@ def safe_url(url):
         return None
     return url
 
-# Dynamiczne wykrywanie formatu strumienia (preferencja AAC dla RMF)
-def get_stream_format(url):
-    try:
-        headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'}
-        r = requests.head(url, headers=headers, allow_redirects=True, timeout=8)
-        content_type = r.headers.get('Content-Type', '').lower()
-        if 'aac' in content_type:
-            return "audio/aac"
-        elif 'mpeg' in content_type or 'mp3' in content_type:
-            return "audio/mpeg"
-        elif 'm3u8' in content_type or 'hls' in content_type:
-            return "application/x-mpegURL"
-    except:
-        pass
-    # Fallback – dla RMF preferuj AAC
-    if 'rmf' in url.lower():
-        return "audio/aac"
-    return "audio/mpeg"
-
-# Kolory w stylu Metro / Windows 8
+# Kolory w stylu Metro (Windows 8)
 metro_colors = [
     "#0072C6", "#D13438", "#00A300", "#F09609", "#A200FF",
     "#E51400", "#339933", "#00ABA9", "#FFC40D", "#1BA1E2"
 ]
-
-# Fallback – lista popularnych stacji (zaktualizowany RMF FM na działający z 2025 search)
-fallback_stations = [
-    {"name": "Polskie Radio Jedynka", "url_resolved": "https://mp3.polskieradio.pl:8900/;stream.mp3", "tags": "news, talk", "bitrate": 128},
-    {"name": "Polskie Radio Dwójka", "url_resolved": "https://mp3.polskieradio.pl:8902/;stream.mp3", "tags": "classical", "bitrate": 128},
-    {"name": "Polskie Radio Trójka", "url_resolved": "https://mp3.polskieradio.pl:8904/;stream.mp3", "tags": "music, alternative", "bitrate": 128},
-    {"name": "RMF FM", "url_resolved": "https://rs6-krk2.rmfstream.pl/rmf_fm", "tags": "pop, hits", "bitrate": 128},  # Aktualny z search 2025, testowany
-    {"name": "Radio ZET", "url_resolved": "https://n-15-21.dcs.redcdn.pl/sc/o2/Eurozet/live/audio.livx", "tags": "pop", "bitrate": 128},
-    {"name": "VOX FM", "url_resolved": "https://ic2.smcdn.pl/3990-1.mp3", "tags": "hits", "bitrate": 128},
-    {"name": "Eska Warszawa", "url_resolved": "https://stream.open.fm/1", "tags": "pop, dance", "bitrate": 128},
-    {"name": "Antyradio", "url_resolved": "https://n-15-21.dcs.redcdn.pl/sc/o2/Eurozet/live/antyradio.livx", "tags": "rock", "bitrate": 128},
-]
-
-# Cache wyszukiwania stacji
-@st.cache_data(ttl=3600)
-def search_stations(query="", limit=50):
-    try:
-        rb = RadioBrowser(timeout=10)
-        if query:
-            return rb.search(name=query, country="Poland", limit=limit, order="clickcount", reverse=True)
-        return rb.search(country="Poland", limit=limit, order="clickcount", reverse=True)
-    except:
-        return []
 
 # Zakładki
 tab1, tab2 = st.tabs(["🎵 Radio Online", "🛒 Gazetki Promocyjne"])
 
 # === ZAKŁADKA RADIO ===
 with tab1:
-    st.header("🇵🇱 Polskie Radio – Duże Kafelki jak w Windows 8")
-    st.markdown("Kliknij kafelek → radio gra w panelu po prawej stronie")
+    st.header("🇵🇱 Polskie Radio – Kafelki jak w Windows 8!")
+    st.markdown("Kliknij kafelek → słuchaj w panelu po prawej")
 
-    # Styl kafelków
+    # Styl kafelków stacji
     st.markdown("""
     <style>
         .station-tile {
             background-color: #0072C6;
-            border-radius: 12px;
-            padding: 25px 15px;
+            border-radius: 8px;
+            padding: 30px;
             text-align: center;
             font-size: 24px;
             font-weight: bold;
             color: white;
-            margin: 12px 0;
-            box-shadow: 0 6px 14px rgba(0,0,0,0.25);
-            min-height: 150px;
+            margin: 10px 0;
+            box-shadow: 0 6px 12px rgba(0,0,0,0.2);
+            height: 160px;
             display: flex;
-            flex-direction: column;
+            align-items: center;
             justify-content: center;
+            flex-direction: column;
         }
         .tile-small-text {
             font-size: 16px;
@@ -126,8 +84,9 @@ with tab1:
     """, unsafe_allow_html=True)
 
     # === Ulubione stacje ===
-    st.subheader("❤️ Moje Ulubione")
+    st.subheader("❤️ Moje Ulubione Stacje")
     favorites = get_favorites()
+    
     if favorites:
         cols = st.columns(3)
         for idx, row in enumerate(favorites):
@@ -138,7 +97,7 @@ with tab1:
             tags = row[2] if len(row) > 2 else "brak"
             bitrate = row[3] if len(row) > 3 else 128
             color = random.choice(metro_colors)
-
+            
             with cols[idx % 3]:
                 st.markdown(f"""
                     <div class="station-tile" style="background-color: {color};">
@@ -146,37 +105,49 @@ with tab1:
                         <div class="tile-small-text">{tags} | {bitrate} kbps</div>
                     </div>
                 """, unsafe_allow_html=True)
-
-                b1, b2 = st.columns(2)
-                with b1:
-                    if st.button("▶️ Słuchaj", key=f"fav_play_{idx}"):
+                
+                col_btn1, col_btn2 = st.columns(2)
+                with col_btn1:
+                    if st.button("Wybierz", key=f"fav_play_{idx}"):
                         st.session_state.selected_station = {"name": name, "url_resolved": url, "tags": tags, "bitrate": bitrate}
                         st.rerun()
-                with b2:
-                    if st.button("🗑️ Usuń", key=f"fav_del_{idx}"):
+                with col_btn2:
+                    if st.button("Usuń ❌", key=f"fav_del_{idx}"):
                         remove_favorite(name)
+                        st.success("Usunięto!")
                         st.rerun()
     else:
-        st.info("Brak ulubionych stacji. Dodaj z listy poniżej!")
+        st.info("Brak ulubionych. Dodaj stacje z listy poniżej!")
 
-    # === Wyszukiwanie stacji ===
-    st.subheader("🔍 Wszystkie polskie stacje")
-    query = st.text_input("Wpisz nazwę stacji (np. RMF, ZET, Trójka):", key="search_query")
+    # === Wyszukiwanie i przeglądanie stacji ===
+    st.subheader("🔍 Wszystkie Polskie Stacje")
+    query = st.text_input("Szukaj stacji (np. RMF, Eska, Trójka):", key="search")
 
-    stations = search_stations(query, limit=60) if query or not st.session_state.get('stations_loaded') else st.session_state.get('cached_stations', [])
-    if not stations:
-        stations = fallback_stations
-
-    valid_stations = []
-    for station in stations:
-        safe = safe_url(station.get('url_resolved', ''))
-        if safe:
-            station_copy = station.copy()
-            station_copy['url_resolved'] = safe
-            valid_stations.append(station_copy)
+    try:
+        rb = RadioBrowser()
+        if query:
+            stations = rb.search(name=query, country="Poland", limit=100, order="clickcount", reverse=True)
+        else:
+            stations = rb.search(country="Poland", limit=100, order="clickcount", reverse=True)
+        
+        valid_stations = []
+        for station in stations:
+            safe_station_url = safe_url(station['url_resolved'])
+            if safe_station_url:
+                valid_station = station.copy()
+                valid_station['url_resolved'] = safe_station_url
+                valid_stations.append(valid_station)
+        
+        if valid_stations:
+            st.success(f"Znaleziono {len(valid_stations)} działających stacji!")
+        else:
+            st.warning("Brak działających stacji z poprawnymi linkami.")
+        
+    except Exception as e:
+        st.warning(f"Brak połączenia: {e}. Spróbuj później.")
+        valid_stations = []
 
     if valid_stations:
-        st.success(f"Znaleziono {len(valid_stations)} działających stacji")
         cols = st.columns(3)
         for idx, station in enumerate(valid_stations):
             color = random.choice(metro_colors)
@@ -187,44 +158,44 @@ with tab1:
                         <div class="tile-small-text">{station.get('tags', 'brak')} | {station.get('bitrate', '?')} kbps</div>
                     </div>
                 """, unsafe_allow_html=True)
-
-                b1, b2 = st.columns(2)
-                with b1:
-                    if st.button("▶️ Słuchaj", key=f"play_{idx}"):
+                
+                col1, col2 = st.columns(2)
+                with col1:
+                    if st.button("Wybierz", key=f"play_{idx}"):
                         st.session_state.selected_station = station
                         st.rerun()
-                with b2:
+                with col2:
                     if st.button("❤️ Dodaj", key=f"add_{idx}"):
                         if add_favorite(station):
-                            st.success(f"Dodano {station['name']}!")
+                            st.success("Dodano!")
                             st.rerun()
-    else:
-        st.warning("Brak działających stacji. Spróbuj innego wyszukiwania.")
 
 # === ZAKŁADKA GAZETKI ===
 with tab2:
     st.header("🛒 Gazetki Promocyjne – Duże Kafelki")
-    st.markdown("Kliknij logo sklepu → otwiera się oficjalna gazetka")
+    st.markdown("Kliknij kafelek sklepu → otwiera się oficjalna gazetka")
 
     st.markdown("""
     <style>
         .shop-tile {
             background-color: #0072C6;
-            border-radius: 15px;
-            padding: 30px;
+            border-radius: 12px;
+            padding: 20px;
             text-align: center;
             font-size: 28px;
             font-weight: bold;
             color: white;
-            margin: 20px 0;
-            box-shadow: 0 8px 18px rgba(0,0,0,0.2);
-            min-height: 220px;
+            margin: 15px 0;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+            height: 200px;
             display: flex;
-            flex-direction: column;
+            align-items: center;
             justify-content: center;
-            cursor: pointer;
+            flex-direction: column;
         }
-        .shop-tile:hover { opacity: 0.9; }
+        .shop-tile:hover {
+            opacity: 0.9;
+        }
     </style>
     """, unsafe_allow_html=True)
 
@@ -243,58 +214,59 @@ with tab2:
     for idx, promo in enumerate(promotions):
         color = promo.get("color", random.choice(metro_colors))
         with cols[idx % 3]:
-            st.markdown(
-                f'<a href="{promo["url"]}" target="_blank" style="text-decoration:none;">'
-                f'<div class="shop-tile" style="background-color:{color};">'
-                f'<img src="{promo["image"]}" width="120" style="margin-bottom:12px;">'
-                f'<div>{promo["name"]}</div>'
-                f'</div></a>',
-                unsafe_allow_html=True
-            )
+            st.markdown(f"""
+                <div style="text-align: center; margin-bottom: 30px;">
+                    <a href="{promo['url']}" target="_blank">
+                        <div class="shop-tile" style="background-color: {color};">
+                            <img src="{promo['image']}" width="120" style="margin-bottom: 10px;">
+                            <div>{promo['name']}</div>
+                        </div>
+                    </a>
+                </div>
+            """, unsafe_allow_html=True)
 
-# === SIDEBAR – ODTWARZACZ RADIA ===
+# === SIDEBAR – ODTWARZACZ RADIA (MIESZANY AAC/MP3) ===
 with st.sidebar:
     st.header("🎵 Odtwarzacz Radia")
     if 'selected_station' in st.session_state:
         selected = st.session_state.selected_station
-        url = safe_url(selected.get('url_resolved'))
+        url = safe_url(selected['url_resolved'])
         if url:
-            st.markdown(f"### Słuchasz: **{selected['name']}**")
+            st.markdown(f"### Gra: **{selected['name']}**")
             st.markdown(f"**Tagi:** {selected.get('tags', 'brak')} • **Bitrate:** {selected.get('bitrate', '?')} kbps")
 
-            # HTML audio – obsługuje MP3 i AAC jednocześnie
+            # Mieszany odtwarzacz – próbuje MP3 i AAC jednocześnie
             st.components.v1.html(f"""
-                <audio controls autoplay style="width:100%; margin-top:10px;">
-                    <source src="{url}" type="{get_stream_format(url)}">
-                    <source src="{url}" type="audio/aac">
+                <audio controls autoplay style="width:100%;">
                     <source src="{url}" type="audio/mpeg">
-                    Twoja przeglądarka nie obsługuje odtwarzania.
+                    <source src="{url}" type="audio/aac">
+                    Twoja przeglądarka nie obsługuje audio.
                 </audio>
-            """, height=120)
+            """, height=100)
 
             st.markdown("""
-            <div style="background:#e6f7ff; padding:15px; border-radius:10px; text-align:center; margin-top:15px;">
-                🔊 <strong>Nie słychać?</strong><br>
-                Naciśnij PLAY 🔘 lub odśwież stronę.<br>
+            <div style="background-color: #f0f8ff; padding: 15px; border-radius: 10px; text-align: center; font-size: 18px; margin: 15px 0;">
+                🔊 <strong>Nie słychać? Naciśnij PLAY 🔘!</strong><br>
                 Sprawdź głośność w telefonie/komputerze.
             </div>
             """, unsafe_allow_html=True)
 
             fav_names = [f[0] for f in get_favorites()]
             if selected['name'] not in fav_names:
-                if st.button("❤️ Dodaj do ulubionych", key="sidebar_add"):
+                if st.button("❤️ Dodaj do ulubionych", key="add_main"):
                     if add_favorite(selected):
-                        st.success("Dodano do ulubionych!")
+                        st.success("Dodano!")
                         st.rerun()
             else:
                 st.success("✅ Już w ulubionych!")
-
-            if st.button("🛑 Zatrzymaj radio"):
-                del st.session_state.selected_station
+            
+            if st.button("🔙 Zatrzymaj radio"):
+                if 'selected_station' in st.session_state:
+                    del st.session_state.selected_station
                 st.rerun()
         else:
-            st.error("Błędny link stacji – wybierz inną.")
+            st.error("Błędny link – wybierz inną stację.")
     else:
-        st.info("Wybierz stację z kafelków po lewej stronie.")
+        st.info("Wybierz stację z kafelków po lewej.")
 
-st.sidebar.success("Prosta aplikacja dla seniorów – duże kafelki wszędzie! 🎉")
+st.sidebar.success("Aplikacja dla Seniorów – duże kafelki wszędzie! 🎉")
