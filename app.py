@@ -2,7 +2,6 @@ import streamlit as st
 from pyradios import RadioBrowser
 import sqlite3
 import random
-import requests
 import urllib.parse
 
 # Konfiguracja
@@ -46,6 +45,18 @@ def safe_url(url):
     if not parsed.scheme or not parsed.netloc:
         return None
     return url
+
+# Funkcja do dynamicznego formatu audio na podstawie URL
+def get_audio_format(url):
+    """Określa format audio na podstawie rozszerzenia URL"""
+    if url.endswith('.mp3') or '.mp3' in url:
+        return "audio/mpeg"
+    elif url.endswith('.aac') or '.aac' in url:
+        return "audio/aac"
+    elif url.endswith('.m3u8') or '.m3u8' in url:
+        return "application/x-mpegURL"  # HLS
+    else:
+        return "audio/mpeg"  # Domyślnie MP3 dla streamów
 
 # Kolory Metro
 metro_colors = [
@@ -188,11 +199,12 @@ with st.sidebar:
     if 'selected_station' in st.session_state:
         selected = st.session_state.selected_station
         url = selected['url_resolved']
+        audio_format = get_audio_format(url)  # Dynamiczny format!
         
         st.markdown(f"### Gra: **{selected['name']}**")
         st.markdown(f"**Tagi:** {selected.get('tags', 'brak')} • **Bitrate:** {selected.get('bitrate', '?')} kbps")
         
-        st.audio(url, format="audio/mpeg")
+        st.audio(url, format=audio_format)
         
         st.markdown("""
         <div style="background-color: #f0f8ff; padding: 15px; border-radius: 10px; text-align: center; font-size: 18px; margin: 15px 0;">
