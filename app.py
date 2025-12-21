@@ -30,22 +30,16 @@ def remove_favorite(name):
     c.execute("DELETE FROM favorites WHERE name=?", (name,))
     conn.commit()
 
-# Kolory Metro (Windows 8 style)
+# Funkcja poprawiająca URL – próba HTTPS zamiast HTTP (rozwiązuje Mixed Content dla wielu stacji)
+def safe_url(url):
+    if url.startswith("http://"):
+        return url.replace("http://", "https://", 1)
+    return url
+
+# Kolory Metro
 metro_colors = [
     "#0072C6", "#D13438", "#00A300", "#F09609", "#A200FF",
     "#E51400", "#339933", "#00ABA9", "#FFC40D", "#1BA1E2"
-]
-
-# Fallback stacje
-fallback_stations = [
-    {"name": "Polskie Radio Jedynka", "url_resolved": "http://mp3.polskieradio.pl:8900/;stream.mp3", "tags": "news, talk", "bitrate": 128},
-    {"name": "Polskie Radio Dwójka", "url_resolved": "http://mp3.polskieradio.pl:8902/;stream.mp3", "tags": "classical", "bitrate": 128},
-    {"name": "Polskie Radio Trójka", "url_resolved": "http://mp3.polskieradio.pl:8904/;stream.mp3", "tags": "music, alternative", "bitrate": 128},
-    {"name": "RMF FM", "url_resolved": "https://rs101-krk.rmfstream.pl/rmf_fm", "tags": "pop, hits", "bitrate": 128},
-    {"name": "Radio ZET", "url_resolved": "https://n-15-21.dcs.redcdn.pl/sc/o2/Eurozet/live/audio.livx", "tags": "pop", "bitrate": 128},
-    {"name": "VOX FM", "url_resolved": "https://ic2.smcdn.pl/3990-1.mp3", "tags": "hits", "bitrate": 128},
-    {"name": "Eska Warszawa", "url_resolved": "https://stream.open.fm/1", "tags": "pop, dance", "bitrate": 128},
-    {"name": "Antyradio", "url_resolved": "https://n-15-21.dcs.redcdn.pl/sc/o2/Eurozet/live/antyradio.livx", "tags": "rock", "bitrate": 128},
 ]
 
 # Zakładki
@@ -53,7 +47,7 @@ tab1, tab2 = st.tabs(["🎵 Radio Online", "🛒 Gazetki Promocyjne"])
 
 with tab1:
     st.header("🇵🇱 Polskie Radio – Duże Kafelki jak w Windows 8!")
-    st.markdown("Kliknij kolorowy kafelek, by słuchać radia. Dodaj do ulubionych ❤️")
+    st.markdown("Kliknij kafelek → słuchaj radia. Dodaj do ulubionych ❤️ – zawsze pod ręką!")
 
     # Styl kafelków
     st.markdown("""
@@ -91,7 +85,7 @@ with tab1:
         favorite_dicts = []
         for idx, row in enumerate(favorites):
             name = row[0]
-            url = row[1]
+            url = safe_url(row[1])  # Poprawiamy URL na HTTPS jeśli możliwe
             tags = row[2] if len(row) > 2 else "brak"
             bitrate = row[3] if len(row) > 3 else 128
             color = random.choice(metro_colors)
@@ -149,8 +143,10 @@ with tab1:
                 del st.session_state.selected_station
             st.rerun()
 
-    # === PRZEGLĄDANIE STACJI ===
-    st.subheader("🔍 Wszystkie Polskie Stacje")
+    # === PRZEGLĄDANIE STACJI Z PYRADIOS – z poprawką HTTPS ===
+    st.subheader("🔍 Wszystkie Polskie Stacje (z bazy online)")
+    st.markdown("*Uwaga: Niektóre starsze stacje mogą nie działać na HTTPS – próbujemy automatycznie poprawić link*")
+
     query = st.text_input("Szukaj stacji (np. RMF, Eska, Trójka):", key="search")
 
     try:
@@ -159,15 +155,19 @@ with tab1:
             stations = rb.search(name=query, country="Poland", limit=100, order="clickcount", reverse=True)
         else:
             stations = rb.search(country="Poland", limit=100, order="clickcount", reverse=True)
-        st.success("Połączono z bazą stacji!")
-    except:
-        st.warning("Brak internetu – używam listy zapasowej.")
-        stations = [s for s in fallback_stations if query.lower() in s['name'].lower()] if query else fallback_stations
+        st.success("Połączono z bazą stacji – świeże dane!")
+    except Exception as e:
+        st.warning(f"Brak połączenia: {e}. Spróbuj później.")
+        stations = []
 
     if stations:
         cols = st.columns(3)
         for idx, station in enumerate(stations):
+            safe_station_url = safe_url(station['url_resolved'])  # Kluczowa poprawka!
             color = random.choice(metro_colors)
+            display_station = station.copy()
+            display_station['url_resolved'] = safe_station_url
+            
             with cols[idx % 3]:
                 st.markdown(f"""
                     <div class="station-tile" style="background-color: {color};">
@@ -179,17 +179,20 @@ with tab1:
                 col1, col2 = st.columns(2)
                 with col1:
                     if st.button("Słuchaj", key=f"play_{idx}"):
-                        st.session_state.selected_station = station
+                        st.session_state.selected_station = display_station
                         st.rerun()
                 with col2:
                     if st.button("❤️ Dodaj", key=f"add_{idx}"):
-                        if add_favorite(station):
+                        if add_favorite(display_station):
                             st.success("Dodano!")
                             st.rerun()
     else:
-        st.error("Nie znaleziono stacji.")
+        if query:
+            st.info("Nie znaleziono stacji o tej nazwie.")
+        else:
+            st.info("Wyszukaj stację powyżej.")
 
-# === ZAKŁADKA GAZETKI ===
+# === ZAKŁADKA GAZETKI (bez zmian) ===
 with tab2:
     st.header("🛒 Gazetki Promocyjne")
     st.markdown("Kliknij logo sklepu → otwiera się oficjalna gazetka")
