@@ -1,6 +1,7 @@
 import streamlit as st
 from pyradios import RadioBrowser
 import sqlite3
+import random
 
 # Konfiguracja
 st.set_page_config(page_title="Radio + Gazetki dla Seniorów", layout="wide")
@@ -44,54 +45,145 @@ fallback_stations = [
     {"name": "Antyradio", "url_resolved": "https://n-15-21.dcs.redcdn.pl/sc/o2/Eurozet/live/antyradio.livx", "tags": "rock", "bitrate": 128},
 ]
 
-with tab1:
-    st.header("🇵🇱 Polskie Radio Online – Proste i Przyjazne")
-    st.markdown("Wybierz z ulubionych lub wyszukaj nową stację. Dodaj do ulubionych, by szybko wracać!")
+# Lista kolorów w stylu Windows 8 (Metro UI)
+metro_colors = [
+    "#0072C6",  # Niebieski
+    "#D13438",  # Czerwony
+    "#00A300",  # Zielony
+    "#F09609",  # Pomarańczowy
+    "#A200FF",  # Fioletowy
+    "#E51400",  # Ciemnoczerwony
+    "#339933",  # Ciemnozielony
+    "#00ABA9",  # Turkusowy
+    "#FFC40D",  # Żółty
+    "#1BA1E2",  # Jasnoniebieski
+]
 
-    # Sekcja Ulubione – NAPRAWIONA
+with tab1:
+    st.header("🇵🇱 Polskie Radio Online – Styl Windows 8")
+    st.markdown("Duże kolorowe kafelki jak w Windows 8! Kliknij kafelek, by słuchać. Dodaj do ulubionych.")
+
+    # Styl dla kafelków – duże, kolorowe, w stylu Metro
+    st.markdown("""
+    <style>
+        .station-tile {
+            background-color: #0072C6;  /* Domyślny kolor */
+            border-radius: 5px;
+            padding: 30px;
+            text-align: center;
+            font-size: 24px;
+            font-weight: bold;
+            color: white;
+            margin: 10px 0;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            cursor: pointer;
+            height: 150px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .station-tile:hover {
+            opacity: 0.9;
+        }
+        .tile-small-text {
+            font-size: 14px;
+            margin-top: 10px;
+        }
+    </style>
+    """, unsafe_allow_html=True)
+
+    # Sekcja Ulubione – jako duże kolorowe kafelki
     st.subheader("❤️ Moje Ulubione Stacje")
     favorites = get_favorites()
     
     if favorites:
-        # Bezpieczne rozpakowanie – na wypadek starych rekordów z mniejszą liczbą pól
-        favorite_display = []
+        cols = st.columns(3)  # Siatka 3 kolumn
         favorite_dicts = []
         
-        for row in favorites:
-            # row może mieć 3 lub 4 elementy (stare rekordy miały tylko name, url, tags)
+        for idx, row in enumerate(favorites):
             name = row[0]
             url = row[1]
             tags = row[2] if len(row) > 2 else "brak"
-            bitrate = row[3] if len(row) > 3 else 128  # domyślna wartość
-            favorite_display.append(f"{name} ({tags} | {bitrate} kbps)")
+            bitrate = row[3] if len(row) > 3 else 128
+            color = random.choice(metro_colors)  # Losowy kolor dla każdego kafelka
             favorite_dicts.append({"name": name, "url_resolved": url, "tags": tags, "bitrate": bitrate})
-        
-        selected_fav_idx = st.selectbox(
-            "Wybierz ulubioną stację:",
-            range(len(favorite_display)),
-            format_func=lambda i: favorite_display[i],
-            key="fav_select"
-        )
-        
-        selected_fav = favorite_dicts[selected_fav_idx]
-        url = selected_fav["url_resolved"]
-        
-        st.markdown(f"### 🎶 Słuchasz: **{selected_fav['name']}**")
-        st.markdown(f"Tagi: {selected_fav['tags']} • Bitrate: {selected_fav['bitrate']} kbps")
-        
-        # Odtwarzacz audio – prosty, działa na wszystkich urządzeniach
-        st.audio(url, format="audio/mpeg", start_time=0)
-        
-        # Opcjonalnie: duży, wyraźny komunikat dla seniora
-        st.markdown("### 🔊 Odtwarzanie trwa... Jeśli nie słychać, naciśnij przycisk play powyżej 🔊")
-        
-        if st.button("Usuń z ulubionych", key=f"remove_{selected_fav['name']}"):
-            remove_favorite(selected_fav['name'])
-            st.success("Usunięto z ulubionych!")
-            st.experimental_rerun()
+            
+            with cols[idx % 3]:
+                st.markdown(f"""
+                    <div class="station-tile" style="background-color: {color};" onclick="this.nextElementSibling.click()">
+                        {name}
+                        <div class="tile-small-text">{tags} | {bitrate} kbps</div>
+                    </div>
+                """, unsafe_allow_html=True)
+                if st.button("Słuchaj", key=f"fav_button_{name}_{idx}", help="Kliknij, by odtwarzać"):
+                    st.session_state.selected_station = favorite_dicts[idx]
+                
+                if st.button("Usuń z ulubionych ❌", key=f"remove_{name}_{idx}"):
+                    remove_favorite(name)
+                    st.success("Usunięto z ulubionych!")
+                    st.experimental_rerun()
     else:
-        st.info("Brak ulubionych stacji. Znajdź stację poniżej i dodaj do ulubionych ❤️")
+        st.info("Brak ulubionych stacji. Dodaj je z kafelków poniżej!")
 
+    # Wybrana stacja – odtwarzacz
+    if 'selected_station' in st.session_state:
+        selected = st.session_state.selected_station
+        url = selected['url_resolved']
+        st.markdown(f"### 🎶 Słuchasz: **{selected['name']}**")
+        st.markdown(f"Tagi: {selected.get('tags', 'brak')} • Bitrate: {selected.get('bitrate', '?')} kbps")
+        
+        st.audio(url, format="audio/mpeg")
+        st.caption("Jeśli nie słychać dźwięku – naciśnij Play 🔘 lub odśwież stronę")
+        
+        fav_names = [f[0] for f in favorites]
+        if selected['name'] not in fav_names:
+            if st.button("Dodaj do ulubionych ❤️", key=f"add_selected_{selected['name']}"):
+                if add_favorite(selected):
+                    st.success("Dodano do ulubionych!")
+                    st.experimental_rerun()
+                else:
+                    st.error("Nie udało się dodać.")
+        else:
+            st.markdown("Już w ulubionych ✅")
+
+    # Wyszukiwanie i lista stacji – duże kolorowe kafelki, więcej stacji (limit 100)
+    st.subheader("🔍 Przeglądaj Polskie Stacje Radio")
+    query = st.text_input("Wpisz nazwę stacji (np. RMF, ZET):", key="radio_search")
+
+    stations = None
+    try:
+        rb = RadioBrowser()
+        if query:
+            stations = rb.search(name=query, country="Poland", limit=100, order="clickcount", reverse=True)
+        else:
+            stations = rb.search(country="Poland", limit=100, order="clickcount", reverse=True)
+        st.success("Połączono z bazą – top polskie stacje!")
+    except Exception as e:
+        st.warning(f"Problem: {str(e)}. Używam listy zapasowej!")
+        stations = fallback_stations if not query else [s for s in fallback_stations if query.lower() in s['name'].lower()]
+
+    if not stations:
+        st.error("Nie znaleziono stacji.")
+    else:
+        cols = st.columns(3)  # Siatka 3 kolumn
+        for idx, station in enumerate(stations):
+            color = random.choice(metro_colors)  # Losowy kolor Metro
+            with cols[idx % 3]:
+                st.markdown(f"""
+                    <div class="station-tile" style="background-color: {color};" onclick="this.nextElementSibling.click()">
+                        {station['name']}
+                        <div class="tile-small-text">{station.get('tags', 'brak')} | {station.get('bitrate', '?')} kbps</div>
+                    </div>
+                """, unsafe_allow_html=True)
+                if st.button("Słuchaj", key=f"station_button_{station['name']}_{idx}", help="Kliknij, by odtwarzać"):
+                    st.session_state.selected_station = station
+                
+                if st.button("Dodaj do ulubionych ❤️", key=f"add_{station['name']}_{idx}"):
+                    if add_favorite(station):
+                        st.success("Dodano do ulubionych!")
+                        st.experimental_rerun()
+                    else:
+                        st.error("Nie udało się dodać – może już jest?")
 
 with tab2:
     st.header("🛒 Gazetki Promocyjne – Łatwy Dostęp")
@@ -123,4 +215,4 @@ with tab2:
                 </div>
             """, unsafe_allow_html=True)
 
-st.sidebar.success("Aplikacja dla seniorów – prosta i zawsze działa! 🚀")
+st.sidebar.success("Aplikacja w stylu Windows 8 – duże kafelki! 🚀")
