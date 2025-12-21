@@ -32,9 +32,9 @@ def remove_favorite(name):
     c.execute("DELETE FROM favorites WHERE name=?", (name,))
     conn.commit()
 
-# Bezpieczny URL – filtrujemy niebezpieczne i wymuszamy HTTPS
+# Bezpieczny URL – usunęliśmy filtr "195.150.20" bo blokował dobre stacje
 def safe_url(url):
-    if not url or any(x in url.lower() for x in ["localhost", "127.0.0.1", "195.150.20"]):
+    if not url or any(x in url.lower() for x in ["localhost", "127.0.0.1"]):
         return None
     if url.startswith("http://"):
         url = "https://" + url[7:]
@@ -43,7 +43,7 @@ def safe_url(url):
         return None
     return url
 
-# Dynamiczne wykrywanie formatu strumienia
+# Dynamiczne wykrywanie formatu strumienia (preferencja AAC dla RMF)
 def get_stream_format(url):
     try:
         headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'}
@@ -57,9 +57,9 @@ def get_stream_format(url):
             return "application/x-mpegURL"
     except:
         pass
-    # Fallback – jeśli nie udało się wykryć
+    # Fallback – dla RMF preferuj AAC
     if 'rmf' in url.lower():
-        return "audio/aac"  # RMF często używa AAC
+        return "audio/aac"
     return "audio/mpeg"
 
 # Kolory w stylu Metro / Windows 8
@@ -68,12 +68,12 @@ metro_colors = [
     "#E51400", "#339933", "#00ABA9", "#FFC40D", "#1BA1E2"
 ]
 
-# Fallback – lista popularnych stacji (z aktualnym RMF FM)
+# Fallback – lista popularnych stacji (zaktualizowany RMF FM na działający z 2025 search)
 fallback_stations = [
-    {"name": "Polskie Radio Jedynka", "url_resolved": "https://stream.polskieradio.pl/program1", "tags": "news, talk", "bitrate": 128},
-    {"name": "Polskie Radio Dwójka", "url_resolved": "https://stream.polskieradio.pl/program2", "tags": "classical", "bitrate": 128},
-    {"name": "Polskie Radio Trójka", "url_resolved": "https://stream.polskieradio.pl/program3", "tags": "music, alternative", "bitrate": 128},
-    {"name": "RMF FM", "url_resolved": "https://rmf-ssl.cdn.eurozet.pl/rmffm.mp3", "tags": "pop, hits", "bitrate": 128},
+    {"name": "Polskie Radio Jedynka", "url_resolved": "https://mp3.polskieradio.pl:8900/;stream.mp3", "tags": "news, talk", "bitrate": 128},
+    {"name": "Polskie Radio Dwójka", "url_resolved": "https://mp3.polskieradio.pl:8902/;stream.mp3", "tags": "classical", "bitrate": 128},
+    {"name": "Polskie Radio Trójka", "url_resolved": "https://mp3.polskieradio.pl:8904/;stream.mp3", "tags": "music, alternative", "bitrate": 128},
+    {"name": "RMF FM", "url_resolved": "https://rs6-krk2.rmfstream.pl/rmf_fm", "tags": "pop, hits", "bitrate": 128},  # Aktualny z search 2025, testowany
     {"name": "Radio ZET", "url_resolved": "https://n-15-21.dcs.redcdn.pl/sc/o2/Eurozet/live/audio.livx", "tags": "pop", "bitrate": 128},
     {"name": "VOX FM", "url_resolved": "https://ic2.smcdn.pl/3990-1.mp3", "tags": "hits", "bitrate": 128},
     {"name": "Eska Warszawa", "url_resolved": "https://stream.open.fm/1", "tags": "pop, dance", "bitrate": 128},
