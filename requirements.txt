@@ -2,3 +2,4 @@ streamlit
 pyradios
 requests
 beautifulsoup4  # Na przyszłe dynamiczne pobieranie thumbnails, jeśli chcesz
+sqlite3
