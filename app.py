@@ -3,6 +3,7 @@ from pyradios import RadioBrowser
 import sqlite3
 import random
 import urllib.parse
+from streamlit_card import card  # <--- nowy import!
 
 # Konfiguracja
 st.set_page_config(page_title="Radio + Gazetki dla Seniorów", layout="wide")
@@ -58,7 +59,7 @@ metro_colors = [
     "#8E44AD", "#16A085", "#E67E22", "#C0392B", "#27AE60"
 ]
 
-# ZAWSZE DZIAŁAJĄCE STACJE (HTTPS)
+# ZAWSZE DZIAŁAJĄCE STACJE
 fallback_stations = [
     {"name": "RMF FM", "url_resolved": "https://rs101-krk.rmfstream.pl/rmf_fm", "tags": "pop, hity", "bitrate": 128},
     {"name": "VOX FM", "url_resolved": "https://ic2.smcdn.pl/3990-1.mp3", "tags": "hity, dance", "bitrate": 128},
@@ -76,51 +77,7 @@ tab1, tab2 = st.tabs(["🎵 Radio Online", "🛒 Gazetki Promocyjne"])
 
 with tab1:
     st.header("🇵🇱 Polskie Radio dla Seniora")
-    st.markdown("### Kliknij cały wielki kolorowy kafelek – radio gra po prawej! 🎶🔊")
-
-    # CSS: całkowicie ukrywa niewidzialny przycisk (zero miejsca, zero tooltipa)
-    st.markdown("""
-    <style>
-        /* Ukrywa całkowicie pusty przycisk (zero wysokości, zero widoczności) */
-        div[data-testid="stButton"] button[kind="secondary"] {
-            height: 0px !important;
-            padding: 0px !important;
-            margin: 0px !important;
-            min-height: 0px !important;
-            visibility: hidden !important;
-        }
-        /* Super wielkie kafelki */
-        .clickable-tile {
-            background-color: #0072C6;
-            border-radius: 35px;
-            padding: 100px 20px;
-            text-align: center;
-            font-size: 48px;
-            font-weight: bold;
-            color: white;
-            margin: 40px 0;
-            box-shadow: 0 30px 60px rgba(0,0,0,0.5);
-            height: 380px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            flex-direction: column;
-            cursor: pointer;
-            transition: all 0.5s ease;
-            user-select: none;
-        }
-        .clickable-tile:hover {
-            transform: translateY(-35px) scale(1.12);
-            box-shadow: 0 70px 120px rgba(0,0,0,0.6);
-        }
-        .tile-small-text {
-            font-size: 32px;
-            margin-top: 30px;
-            opacity: 0.9;
-            font-weight: normal;
-        }
-    </style>
-    """, unsafe_allow_html=True)
+    st.markdown("### Kliknij cały wielki kafelek – radio gra po prawej! 🎶🔊")
 
     # === Ulubione ===
     st.subheader("❤️ Moje Ulubione")
@@ -133,15 +90,31 @@ with tab1:
                 continue
             color = random.choice(metro_colors)
             with cols[idx % 3]:
-                if st.button("", key=f"fav_play_{idx}", use_container_width=True):
+                clicked = card(
+                    title=name,
+                    text=f"{tags} | {bitrate} kbps",
+                    styles={
+                        "card": {
+                            "width": "100%",
+                            "height": "350px",
+                            "border-radius": "30px",
+                            "box-shadow": "0 30px 60px rgba(0,0,0,0.5)",
+                            "background-color": color,
+                            "padding": "40px",
+                            "text-align": "center",
+                            "font-size": "40px",
+                            "color": "white",
+                            "cursor": "pointer"
+                        },
+                        "text": {
+                            "font-size": "28px",
+                            "margin-top": "30px"
+                        }
+                    }
+                )
+                if clicked:
                     st.session_state.selected_station = {"name": name, "url_resolved": url, "tags": tags, "bitrate": bitrate}
                     st.rerun()
-                st.markdown(f"""
-                    <div class="clickable-tile" style="background-color: {color};">
-                        {name}
-                        <div class="tile-small-text">{tags} | {bitrate} kbps</div>
-                    </div>
-                """, unsafe_allow_html=True)
                 if st.button("Usuń z ulubionych ❌", key=f"fav_del_{idx}", use_container_width=True):
                     remove_favorite(name)
                     st.rerun()
@@ -173,22 +146,39 @@ with tab1:
         for idx, station in enumerate(valid_stations):
             color = random.choice(metro_colors)
             with cols[idx % 3]:
-                if st.button("", key=f"play_{idx}", use_container_width=True):
+                clicked = card(
+                    title=station['name'],
+                    text=f"{station.get('tags', 'brak')} | {station.get('bitrate', '?')} kbps",
+                    styles={
+                        "card": {
+                            "width": "100%",
+                            "height": "350px",
+                            "border-radius": "30px",
+                            "box-shadow": "0 30px 60px rgba(0,0,0,0.5)",
+                            "background-color": color,
+                            "padding": "40px",
+                            "text-align": "center",
+                            "font-size": "40px",
+                            "color": "white",
+                            "cursor": "pointer"
+                        },
+                        "text": {
+                            "font-size": "28px",
+                            "margin-top": "30px"
+                        }
+                    }
+                )
+                if clicked:
                     st.session_state.selected_station = station
                     st.rerun()
-                st.markdown(f"""
-                    <div class="clickable-tile" style="background-color: {color};">
-                        {station['name']}
-                        <div class="tile-small-text">{station.get('tags', 'brak')} | {station.get('bitrate', '?')} kbps</div>
-                    </div>
-                """, unsafe_allow_html=True)
                 if st.button("❤️ Dodaj do ulubionych", key=f"add_{idx}", use_container_width=True):
                     add_favorite(station)
                     st.success("Dodano!")
                     st.rerun()
 
-# === ZAKŁADKA GAZETKI === (pozostaw bez zmian lub skopiuj poprzednią wersję)
+# Reszta kodu (gazetki i sidebar) – zostaw jak miałeś wcześniej
 
-# === SIDEBAR ODTWARZACZ === (pozostaw bez zmian)
+with st.sidebar:
+    # Twój odtwarzacz bez zmian
 
-st.sidebar.success("Czyste wielkie kafelki – klikasz gdziekolwiek i słuchasz! ❤️")
+st.sidebar.success("Teraz kafelki są w 100% czyste i klikalne! ❤️")
