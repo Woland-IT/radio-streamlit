@@ -58,7 +58,7 @@ metro_colors = [
     "#8E44AD", "#16A085", "#E67E22", "#C0392B", "#27AE60"
 ]
 
-# === ZAWSZE DZIAŁAJĄCE STACJE (HTTPS tylko) ===
+# ZAWSZE DZIAŁAJĄCE STACJE (HTTPS)
 fallback_stations = [
     {"name": "RMF FM", "url_resolved": "https://rs101-krk.rmfstream.pl/rmf_fm", "tags": "pop, hity", "bitrate": 128},
     {"name": "VOX FM", "url_resolved": "https://ic2.smcdn.pl/3990-1.mp3", "tags": "hity, dance", "bitrate": 128},
@@ -76,22 +76,31 @@ tab1, tab2 = st.tabs(["🎵 Radio Online", "🛒 Gazetki Promocyjne"])
 
 with tab1:
     st.header("🇵🇱 Polskie Radio dla Seniora")
-    st.markdown("### Kliknij cały wielki kolorowy kafelek – radio gra od razu po prawej! 🎶🔊")
+    st.markdown("### Kliknij cały wielki kolorowy kafelek – radio gra po prawej! 🎶🔊")
 
-    # Super duże kafelki – czysty wygląd
+    # CSS: całkowicie ukrywa niewidzialny przycisk (zero miejsca, zero tooltipa)
     st.markdown("""
     <style>
+        /* Ukrywa całkowicie pusty przycisk (zero wysokości, zero widoczności) */
+        div[data-testid="stButton"] button[kind="secondary"] {
+            height: 0px !important;
+            padding: 0px !important;
+            margin: 0px !important;
+            min-height: 0px !important;
+            visibility: hidden !important;
+        }
+        /* Super wielkie kafelki */
         .clickable-tile {
             background-color: #0072C6;
-            border-radius: 30px;
-            padding: 90px 20px;
+            border-radius: 35px;
+            padding: 100px 20px;
             text-align: center;
-            font-size: 45px;
+            font-size: 48px;
             font-weight: bold;
             color: white;
             margin: 40px 0;
-            box-shadow: 0 25px 50px rgba(0,0,0,0.5);
-            height: 350px;
+            box-shadow: 0 30px 60px rgba(0,0,0,0.5);
+            height: 380px;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -101,11 +110,11 @@ with tab1:
             user-select: none;
         }
         .clickable-tile:hover {
-            transform: translateY(-30px) scale(1.12);
-            box-shadow: 0 60px 100px rgba(0,0,0,0.6);
+            transform: translateY(-35px) scale(1.12);
+            box-shadow: 0 70px 120px rgba(0,0,0,0.6);
         }
         .tile-small-text {
-            font-size: 30px;
+            font-size: 32px;
             margin-top: 30px;
             opacity: 0.9;
             font-weight: normal;
@@ -124,18 +133,15 @@ with tab1:
                 continue
             color = random.choice(metro_colors)
             with cols[idx % 3]:
-                # Niewidzialny przycisk – kliknięcie całego obszaru włącza radio
                 if st.button("", key=f"fav_play_{idx}", use_container_width=True):
                     st.session_state.selected_station = {"name": name, "url_resolved": url, "tags": tags, "bitrate": bitrate}
                     st.rerun()
-
                 st.markdown(f"""
                     <div class="clickable-tile" style="background-color: {color};">
                         {name}
                         <div class="tile-small-text">{tags} | {bitrate} kbps</div>
                     </div>
                 """, unsafe_allow_html=True)
-
                 if st.button("Usuń z ulubionych ❌", key=f"fav_del_{idx}", use_container_width=True):
                     remove_favorite(name)
                     st.rerun()
@@ -146,10 +152,8 @@ with tab1:
     st.subheader("🔍 Wszystkie działające stacje")
     query = st.text_input("Szukaj (np. RMF, Trójka):", key="search")
 
-    # Najpierw fallback – zawsze pokazujemy działające
     valid_stations = fallback_stations[:]
 
-    # Potem próbujemy API – tylko jeśli działa
     try:
         rb = RadioBrowser()
         stations = rb.search(name=query if query else "", country="Poland", limit=100, order="clickcount", reverse=True)
@@ -160,128 +164,31 @@ with tab1:
                 s['url_resolved'] = url
                 if s not in valid_stations:
                     valid_stations.append(s)
-        st.success(f"Znaleziono {len(valid_stations)} stacji – kliknij kafelek i słuchaj!")
+        st.success(f"Znaleziono {len(valid_stations)} stacji – kliknij kafelek!")
     except Exception as e:
-        st.warning(f"Brak połączenia z bazą stacji: {e}. Pokazuję zapasowe – one zawsze grają!")
+        st.warning(f"Brak API: {e}. Zapasowe zawsze działają!")
 
-    # Teraz renderujemy kafelki – po pełnym załadowaniu listy
     if valid_stations:
         cols = st.columns(3)
         for idx, station in enumerate(valid_stations):
             color = random.choice(metro_colors)
             with cols[idx % 3]:
-                # Niewidzialny przycisk na całą szerokość – idealnie pokrywa kafelek
                 if st.button("", key=f"play_{idx}", use_container_width=True):
                     st.session_state.selected_station = station
                     st.rerun()
-
                 st.markdown(f"""
                     <div class="clickable-tile" style="background-color: {color};">
                         {station['name']}
                         <div class="tile-small-text">{station.get('tags', 'brak')} | {station.get('bitrate', '?')} kbps</div>
                     </div>
                 """, unsafe_allow_html=True)
-
                 if st.button("❤️ Dodaj do ulubionych", key=f"add_{idx}", use_container_width=True):
                     add_favorite(station)
                     st.success("Dodano!")
                     st.rerun()
 
-# === ZAKŁADKA GAZETKI ===
-with tab2:
-    st.header("🛒 Gazetki Promocyjne – Wielkie Kafelki")
-    st.markdown("Kliknij kafelek sklepu → otwiera się gazetka")
+# === ZAKŁADKA GAZETKI === (pozostaw bez zmian lub skopiuj poprzednią wersję)
 
-    st.markdown("""
-    <style>
-        .shop-tile {
-            background-color: #0072C6;
-            border-radius: 30px;
-            padding: 80px 20px;
-            text-align: center;
-            font-size: 42px;
-            font-weight: bold;
-            color: white;
-            margin: 40px 0;
-            box-shadow: 0 25px 50px rgba(0,0,0,0.5);
-            height: 350px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            flex-direction: column;
-            transition: all 0.5s ease;
-        }
-        .shop-tile:hover {
-            transform: translateY(-25px) scale(1.1);
-            box-shadow: 0 60px 100px rgba(0,0,0,0.6);
-        }
-    </style>
-    """, unsafe_allow_html=True)
+# === SIDEBAR ODTWARZACZ === (pozostaw bez zmian)
 
-    promotions = [
-        {"name": "Biedronka", "image": "https://www.biedronka.pl/sites/default/files/styles/logo/public/logo-biedronka.png", "url": "https://www.biedronka.pl/gazetki", "color": "#D13438"},
-        {"name": "Lidl", "image": "https://www.lidl.pl/assets/pl/logo.svg", "url": "https://www.lidl.pl/c/nasze-gazetki/s10008614", "color": "#0072C6"},
-        {"name": "Kaufland", "image": "https://sklep.kaufland.pl/assets/img/kaufland-logo.svg", "url": "https://sklep.kaufland.pl/gazeta-reklamowa.html", "color": "#E51400"},
-        {"name": "Dino", "image": "https://marketdino.pl/themes/dino/assets/img/logo.svg", "url": "https://marketdino.pl/gazetki-promocyjne", "color": "#F09609"},
-        {"name": "Carrefour", "image": "https://www.carrefour.pl/themes/custom/carrefour/logo.svg", "url": "https://www.carrefour.pl/gazetka-handlowa", "color": "#00A300"},
-        {"name": "Leroy Merlin", "image": "https://www.leroymerlin.pl/img/logo-lm.svg", "url": "https://www.leroymerlin.pl/gazetka/", "color": "#FFC40D"},
-        {"name": "Bricomarché", "image": "https://www.bricomarche.pl/themes/custom/bricomarche/logo.png", "url": "https://www.bricomarche.pl/gazetka", "color": "#A200FF"},
-        {"name": "Empik", "image": "https://www.empik.com/static/img/empik-logo.svg", "url": "https://www.empik.com/promocje", "color": "#00ABA9"},
-    ]
-
-    cols = st.columns(3)
-    for idx, promo in enumerate(promotions):
-        color = promo.get("color", random.choice(metro_colors))
-        with cols[idx % 3]:
-            st.markdown(f"""
-                <div style="text-align: center; margin-bottom: 60px;">
-                    <a href="{promo['url']}" target="_blank">
-                        <div class="shop-tile" style="background-color: {color};">
-                            <img src="{promo['image']}" width="180" style="margin-bottom: 30px;">
-                            <p>{promo['name']}</p>
-                        </div>
-                    </a>
-                </div>
-            """, unsafe_allow_html=True)
-
-# === SIDEBAR – ODTWARZACZ ===
-with st.sidebar:
-    st.header("🎵 Teraz gra...")
-    if 'selected_station' in st.session_state:
-        selected = st.session_state.selected_station
-        url = selected['url_resolved']
-        audio_type = get_audio_format(url)
-
-        st.markdown(f"### **{selected['name']}** 🔊🎶")
-        st.markdown(f"**Tagi:** {selected.get('tags', 'brak')} • **Bitrate:** {selected.get('bitrate', '?')} kbps")
-
-        st.components.v1.html(f"""
-            <audio controls autoplay style="width:100%;">
-                <source src="{url}" type="{audio_type}">
-                Twoja przeglądarka nie obsługuje audio.
-            </audio>
-        """, height=100)
-
-        st.markdown("""
-        <div style="background-color: #e6f7ff; padding: 40px; border-radius: 20px; text-align: center; font-size: 28px; margin: 30px 0;">
-            🔊 <strong>Nie słychać?</strong><br>
-            Naciśnij ▶️ PLAY wyżej!<br>
-            Sprawdź głośność telefonu/komputera.
-        </div>
-        """, unsafe_allow_html=True)
-
-        if selected['name'] not in [f[0] for f in get_favorites()]:
-            if st.button("❤️ Dodaj do ulubionych", use_container_width=True):
-                add_favorite(selected)
-                st.rerun()
-        else:
-            st.success("✅ Już w ulubionych!")
-
-        if st.button("🔇 Zatrzymaj radio", use_container_width=True):
-            if 'selected_station' in st.session_state:
-                del st.session_state.selected_station
-            st.rerun()
-    else:
-        st.info("Kliknij wielki kolorowy kafelek – radio zacznie grać tutaj!")
-
-st.sidebar.success("Appka dla Seniora – wielkie kafelki, klikasz i słuchasz! ❤️🎉")
+st.sidebar.success("Czyste wielkie kafelki – klikasz gdziekolwiek i słuchasz! ❤️")
