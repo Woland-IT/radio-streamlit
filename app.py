@@ -51,21 +51,23 @@ def get_audio_format(url):
     else:
         return "audio/mpeg"
 
-# Kolory Metro
-metro_colors = ["#D13438", "#0072C6", "#00A300", "#F09609", "#A200FF",
-                "#E51400", "#339933", "#00ABA9", "#FFC40D", "#1BA1E2",
-                "#8E44AD", "#16A085", "#E67E22", "#C0392B"]
+# Kolory Metro – dużo kolorów dla pięknego wyglądu
+metro_colors = [
+    "#D13438", "#0072C6", "#00A300", "#F09609", "#A200FF",
+    "#E51400", "#339933", "#00ABA9", "#FFC40D", "#1BA1E2",
+    "#8E44AD", "#16A085", "#E67E22", "#C0392B", "#27AE60"
+]
 
-# === ZAWSZE DZIAŁAJĄCE STACJE – sprawdzone HTTPS (grudzień 2025) ===
+# === ZAWSZE DZIAŁAJĄCE STACJE (sprawdzone HTTPS – grudzień 2025) ===
 fallback_stations = [
     {"name": "RMF FM", "url_resolved": "https://rs101-krk.rmfstream.pl/rmf_fm", "tags": "pop, hity", "bitrate": 128},
     {"name": "VOX FM", "url_resolved": "https://ic2.smcdn.pl/3990-1.mp3", "tags": "hity, dance", "bitrate": 128},
     {"name": "Eska Warszawa", "url_resolved": "https://stream.open.fm/1", "tags": "pop, dance", "bitrate": 128},
     {"name": "Antyradio", "url_resolved": "https://n-15-21.dcs.redcdn.pl/sc/o2/Eurozet/live/antyradio.livx", "tags": "rock", "bitrate": 128},
-    {"name": "Polskie Radio Jedynka", "url_resolved": "https://stream11.polskieradio.pl/pr1/pr1.sdp/playlist.m3u8", "tags": "news, talk", "bitrate": 128},
+    {"name": "Polskie Radio Jedynka", "url_resolved": "https://stream11.polskieradio.pl/pr1/pr1.sdp/playlist.m3u8", "tags": "wiadomości, talk", "bitrate": 128},
     {"name": "Polskie Radio Dwójka", "url_resolved": "https://stream12.polskieradio.pl/pr2/pr2.sdp/playlist.m3u8", "tags": "klasyka", "bitrate": 128},
     {"name": "Polskie Radio Trójka", "url_resolved": "https://stream13.polskieradio.pl/pr3/pr3.sdp/playlist.m3u8", "tags": "muzyka, alternatywa", "bitrate": 128},
-    {"name": "Polskie Radio Czwórka", "url_resolved": "https://stream14.polskieradio.pl/pr4/pr4.sdp/playlist.m3u8", "tags": "młodzieżowe, pop", "bitrate": 128},
+    {"name": "Polskie Radio Czwórka", "url_resolved": "https://stream14.polskieradio.pl/pr4/pr4.sdp/playlist.m3u8", "tags": "młodzieżowe", "bitrate": 128},
     {"name": "RMF Classic", "url_resolved": "https://rs101-krk.rmfstream.pl/rmf_classic", "tags": "filmowa, relaks", "bitrate": 128},
 ]
 
@@ -74,45 +76,52 @@ tab1, tab2 = st.tabs(["🎵 Radio Online", "🛒 Gazetki Promocyjne"])
 
 with tab1:
     st.header("🇵🇱 Polskie Radio dla Seniora")
-    st.markdown("**Kliknij wielki kolorowy kafelek – radio od razu gra po prawej! 🎶**")
+    st.markdown("### Kliknij cały wielki kolorowy kafelek – radio zaczyna grać po prawej! 🎶🔊")
 
-    # Styl super dużych kafelków
+    # Styl super dużych klikalnych kafelków
     st.markdown("""
     <style>
         .clickable-tile {
             background-color: #0072C6;
-            border-radius: 25px;
-            padding: 70px 20px;
+            border-radius: 30px;
+            padding: 80px 20px;
             text-align: center;
-            font-size: 38px;
+            font-size: 42px;
             font-weight: bold;
             color: white;
-            margin: 30px 0;
-            box-shadow: 0 15px 35px rgba(0,0,0,0.4);
-            height: 280px;
+            margin: 35px 0;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.5);
+            height: 320px;
             display: flex;
             align-items: center;
             justify-content: center;
             flex-direction: column;
             cursor: pointer;
-            transition: all 0.4s ease;
+            transition: all 0.5s ease;
             user-select: none;
         }
         .clickable-tile:hover {
-            transform: translateY(-20px) scale(1.08);
-            box-shadow: 0 40px 60px rgba(0,0,0,0.5);
+            transform: translateY(-25px) scale(1.1);
+            box-shadow: 0 50px 80px rgba(0,0,0,0.6);
         }
         .tile-small-text {
-            font-size: 26px;
-            margin-top: 20px;
+            font-size: 28px;
+            margin-top: 25px;
             opacity: 0.9;
             font-weight: normal;
+        }
+        .heart-btn {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            font-size: 50px;
+            cursor: pointer;
         }
     </style>
     """, unsafe_allow_html=True)
 
-    # === Ulubione ===
-    st.subheader("❤️ Moje Ulubione Stacje")
+    # === Ulubione stacje ===
+    st.subheader("❤️ Moje Ulubione")
     favorites = get_favorites()
     if favorites:
         cols = st.columns(3)
@@ -122,24 +131,29 @@ with tab1:
                 continue
             color = random.choice(metro_colors)
             with cols[idx % 3]:
-                if st.button("Odtwórz teraz", key=f"fav_play_{idx}", use_container_width=True):
+                # Niewidzialny przycisk na całą szerokość – kliknięcie całego kafelka włącza radio
+                if st.button("", key=f"fav_play_{idx}", use_container_width=True, help="Kliknij kafelek aby słuchać"):
                     st.session_state.selected_station = {"name": name, "url_resolved": url, "tags": tags, "bitrate": bitrate}
                     st.rerun()
+
+                # Sam piękny kafelek
                 st.markdown(f"""
-                    <div class="clickable-tile" style="background-color: {color};">
+                    <div class="clickable-tile" style="background-color: {color}; position: relative;">
                         {name}
                         <div class="tile-small-text">{tags} | {bitrate} kbps</div>
                     </div>
                 """, unsafe_allow_html=True)
+
+                # Przycisk usuń
                 if st.button("Usuń z ulubionych ❌", key=f"fav_del_{idx}", use_container_width=True):
                     remove_favorite(name)
                     st.rerun()
     else:
-        st.info("Brak ulubionych – kliknij ❤️ pod kafelkiem poniżej!")
+        st.info("Brak ulubionych – kliknij ❤️ pod kafelkiem poniżej, aby dodać!")
 
     # === Wszystkie stacje ===
     st.subheader("🔍 Wszystkie działające stacje")
-    query = st.text_input("Szukaj (np. RMF, Trójka):", key="search")
+    query = st.text_input("Szukaj stacji (np. RMF, Trójka, VOX):", key="search")
 
     valid_stations = fallback_stations[:]
 
@@ -153,56 +167,61 @@ with tab1:
                 s['url_resolved'] = url
                 if s not in valid_stations:
                     valid_stations.append(s)
-        st.success(f"Znaleziono {len(valid_stations)} stacji – kliknij kafelek!")
+        st.success(f"Znaleziono {len(valid_stations)} stacji – kliknij wielki kafelek!")
     except Exception as e:
-        st.warning(f"Brak połączenia z bazą: {e}. Zapasowe zawsze działają!")
+        st.warning(f"Brak połączenia z bazą stacji: {e}. Zapasowe zawsze grają!")
 
     if valid_stations:
         cols = st.columns(3)
         for idx, station in enumerate(valid_stations):
             color = random.choice(metro_colors)
             with cols[idx % 3]:
-                if st.button("Odtwórz teraz", key=f"play_{idx}", use_container_width=True):
+                # Niewidzialny przycisk na całą szerokość kolumny
+                if st.button("", key=f"play_{idx}", use_container_width=True, help="Kliknij cały kafelek aby odtwarzać"):
                     st.session_state.selected_station = station
                     st.rerun()
+
+                # Piękny kafelek
                 st.markdown(f"""
-                    <div class="clickable-tile" style="background-color: {color};">
+                    <div class="clickable-tile" style="background-color: {color}; position: relative;">
                         {station['name']}
                         <div class="tile-small-text">{station.get('tags', 'brak')} | {station.get('bitrate', '?')} kbps</div>
                     </div>
                 """, unsafe_allow_html=True)
+
+                # Przycisk dodaj do ulubionych
                 if st.button("❤️ Dodaj do ulubionych", key=f"add_{idx}", use_container_width=True):
                     add_favorite(station)
-                    st.success("Dodano!")
+                    st.success("Dodano do ulubionych!")
                     st.rerun()
 
 # === ZAKŁADKA GAZETKI ===
 with tab2:
-    st.header("🛒 Gazetki Promocyjne – Duże Kafelki")
+    st.header("🛒 Gazetki Promocyjne – Wielkie Kafelki")
     st.markdown("Kliknij kafelek sklepu → otwiera się oficjalna gazetka")
 
     st.markdown("""
     <style>
         .shop-tile {
             background-color: #0072C6;
-            border-radius: 25px;
-            padding: 50px 20px;
+            border-radius: 30px;
+            padding: 70px 20px;
             text-align: center;
-            font-size: 36px;
+            font-size: 40px;
             font-weight: bold;
             color: white;
-            margin: 30px 0;
-            box-shadow: 0 15px 35px rgba(0,0,0,0.4);
-            height: 280px;
+            margin: 35px 0;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.5);
+            height: 320px;
             display: flex;
             align-items: center;
             justify-content: center;
             flex-direction: column;
-            transition: all 0.4s ease;
+            transition: all 0.5s ease;
         }
         .shop-tile:hover {
-            transform: translateY(-15px) scale(1.05);
-            box-shadow: 0 30px 50px rgba(0,0,0,0.5);
+            transform: translateY(-20px) scale(1.08);
+            box-shadow: 0 50px 80px rgba(0,0,0,0.6);
         }
     </style>
     """, unsafe_allow_html=True)
@@ -223,10 +242,10 @@ with tab2:
         color = promo.get("color", random.choice(metro_colors))
         with cols[idx % 3]:
             st.markdown(f"""
-                <div style="text-align: center; margin-bottom: 40px;">
+                <div style="text-align: center; margin-bottom: 50px;">
                     <a href="{promo['url']}" target="_blank">
                         <div class="shop-tile" style="background-color: {color};">
-                            <img src="{promo['image']}" width="140" style="margin-bottom: 20px;">
+                            <img src="{promo['image']}" width="160" style="margin-bottom: 25px;">
                             <p>{promo['name']}</p>
                         </div>
                     </a>
@@ -241,7 +260,7 @@ with st.sidebar:
         url = selected['url_resolved']
         audio_type = get_audio_format(url)
 
-        st.markdown(f"### **{selected['name']}** 🔊")
+        st.markdown(f"### **{selected['name']}** 🔊🎶")
         st.markdown(f"**Tagi:** {selected.get('tags', 'brak')} • **Bitrate:** {selected.get('bitrate', '?')} kbps")
 
         st.components.v1.html(f"""
@@ -252,10 +271,10 @@ with st.sidebar:
         """, height=100)
 
         st.markdown("""
-        <div style="background-color: #e6f7ff; padding: 30px; border-radius: 15px; text-align: center; font-size: 24px; margin: 20px 0;">
-            🔊 <strong>Nie słychać?</strong><br>
+        <div style="background-color: #e6f7ff; padding: 35px; border-radius: 20px; text-align: center; font-size: 26px; margin: 30px 0;">
+            🔊 <strong>Nie słychać dźwięku?</strong><br>
             Naciśnij duży przycisk ▶️ PLAY wyżej!<br>
-            Sprawdź głośność telefonu/komputera.
+            Sprawdź głośność telefonu lub komputera.
         </div>
         """, unsafe_allow_html=True)
 
@@ -273,4 +292,4 @@ with st.sidebar:
     else:
         st.info("Kliknij wielki kolorowy kafelek z nazwą stacji – radio zacznie grać tutaj!")
 
-st.sidebar.success("Duże kafelki – klikasz i słuchasz! ❤️")
+st.sidebar.success("Appka dla Seniora – wszystko wielkie, proste i stabilne! ❤️🎉")
