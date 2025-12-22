@@ -3,7 +3,6 @@ from pyradios import RadioBrowser
 import sqlite3
 import random
 import urllib.parse
-from streamlit_card import card  # Wymaga: pip install streamlit-card
 
 # ================================
 # KONFIGURACJA
@@ -60,7 +59,7 @@ metro_colors = [
     "#8E44AD", "#16A085", "#E67E22", "#C0392B", "#27AE60"
 ]
 
-# Zawsze działające stacje (HTTPS)
+# Fallback stacje (HTTPS)
 fallback_stations = [
     {"name": "RMF FM", "url_resolved": "https://rs101-krk.rmfstream.pl/rmf_fm", "tags": "pop, hity", "bitrate": 128},
     {"name": "VOX FM", "url_resolved": "https://ic2.smcdn.pl/3990-1.mp3", "tags": "hity, dance", "bitrate": 128},
@@ -80,7 +79,95 @@ tab1, tab2 = st.tabs(["🎵 Radio Online", "🛒 Gazetki Promocyjne"])
 
 with tab1:
     st.header("🇵🇱 Polskie Radio dla Seniora")
-    st.markdown("### Kliknij cały wielki kolorowy kafelek – radio gra od razu po prawej! 🎶🔊")
+    st.markdown("### Kliknij cały wielki kolorowy kafelek – radio zaczyna grać od razu! 🎶🔊")
+
+    # JavaScript – wysyła dane stacji bez przeładowania strony
+    st.markdown("""
+    <script>
+        function playStation(name, url, tags, bitrate) {
+            // Zapobiega przeładowaniu strony
+            event.preventDefault();
+            event.stopPropagation();
+            
+            // Tworzy ukryty formularz POST i submituje
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.style.display = 'none';
+            
+            const inputs = {
+                'play_name': name,
+                'play_url': url,
+                'play_tags': tags,
+                'play_bitrate': bitrate
+            };
+            
+            for (const key in inputs) {
+                const input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = key;
+                input.value = inputs[key];
+                form.appendChild(input);
+            }
+            
+            document.body.appendChild(form);
+            form.submit();
+        }
+    </script>
+    """, unsafe_allow_html=True)
+
+    # Styl kafelków – czysty i piękny
+    st.markdown("""
+    <style>
+        .clickable-tile {
+            background-color: #0072C6;
+            border-radius: 40px;
+            padding: 100px 20px;
+            text-align: center;
+            font-size: 50px;
+            font-weight: bold;
+            color: white;
+            margin: 40px 0;
+            box-shadow: 0 30px 60px rgba(0,0,0,0.5);
+            height: 400px;
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            cursor: pointer;
+            transition: all 0.5s ease;
+            user-select: none;
+        }
+        .clickable-tile:hover {
+            transform: translateY(-40px) scale(1.12);
+            box-shadow: 0 80px 140px rgba(0,0,0,0.6);
+        }
+        .tile-small-text {
+            font-size: 34px;
+            margin-top: 30px;
+            opacity: 0.9;
+        }
+        a.tile-link {
+            text-decoration: none;
+            color: inherit;
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+    </style>
+    """, unsafe_allow_html=True)
+
+    # Odczytujemy dane z POST (przez query params po rerunie)
+    params = st.experimental_get_query_params()
+    if "play_name" in params:
+        st.session_state.selected_station = {
+            "name": params["play_name"][0],
+            "url_resolved": params["play_url"][0],
+            "tags": params["play_tags"][0],
+            "bitrate": params.get("play_bitrate", ["?"])[0]
+        }
+        st.experimental_set_query_params()  # czyścimy parametry
+        st.rerun()
 
     # === Ulubione ===
     st.subheader("❤️ Moje Ulubione")
@@ -92,28 +179,16 @@ with tab1:
             if not url or not url.startswith("https://"):
                 continue
             color = random.choice(metro_colors)
+            name_js = name.replace("'", "\\'")
             with cols[idx % 3]:
-                has_clicked = card(
-                    title=name,
-                    text=f"{tags} | {bitrate} kbps",
-                    styles={
-                        "card": {
-                            "width": "100%",
-                            "height": "400px",
-                            "border-radius": "40px",
-                            "box-shadow": "0 30px 60px rgba(0,0,0,0.5)",
-                            "background-color": color,
-                            "padding": "50px",
-                            "text-align": "center",
-                            "cursor": "pointer",
-                            "margin": "30px 0",
-                            "transition": "all 0.4s ease"
-                        },
-                        "text": {"font-size": "32px", "margin-top": "30px"},
-                        "title": {"font-size": "52px", "font-weight": "bold"}
-                    },
-                    on_click=lambda n=name, u=url, t=tags, b=bitrate: st.session_state.update(selected_station={"name": n, "url_resolved": u, "tags": t, "bitrate": b}) or st.rerun()
-                )
+                st.markdown(f"""
+                    <a href="#" class="tile-link" onclick="playStation('{name_js}', '{url}', '{tags}', '{bitrate}'); return false;">
+                        <div class="clickable-tile" style="background-color: {color};">
+                            {name}
+                            <div class="tile-small-text">{tags} | {bitrate} kbps</div>
+                        </div>
+                    </a>
+                """, unsafe_allow_html=True)
                 if st.button("Usuń z ulubionych ❌", key=f"fav_del_{idx}", use_container_width=True):
                     remove_favorite(name)
                     st.rerun()
@@ -144,38 +219,29 @@ with tab1:
         cols = st.columns(3)
         for idx, station in enumerate(valid_stations):
             color = random.choice(metro_colors)
+            name_js = station['name'].replace("'", "\\'")
+            url = station['url_resolved']
+            tags = station.get('tags', 'brak')
+            bitrate = station.get('bitrate', '?')
             with cols[idx % 3]:
-                has_clicked = card(
-                    title=station['name'],
-                    text=f"{station.get('tags', 'brak')} | {station.get('bitrate', '?')} kbps",
-                    styles={
-                        "card": {
-                            "width": "100%",
-                            "height": "400px",
-                            "border-radius": "40px",
-                            "box-shadow": "0 30px 60px rgba(0,0,0,0.5)",
-                            "background-color": color,
-                            "padding": "50px",
-                            "text-align": "center",
-                            "cursor": "pointer",
-                            "margin": "30px 0",
-                            "transition": "all 0.4s ease"
-                        },
-                        "text": {"font-size": "32px", "margin-top": "30px"},
-                        "title": {"font-size": "52px", "font-weight": "bold"}
-                    },
-                    on_click=lambda s=station: st.session_state.update(selected_station=s) or st.rerun()
-                )
+                st.markdown(f"""
+                    <a href="#" class="tile-link" onclick="playStation('{name_js}', '{url}', '{tags}', '{bitrate}'); return false;">
+                        <div class="clickable-tile" style="background-color: {color};">
+                            {station['name']}
+                            <div class="tile-small-text">{tags} | {bitrate} kbps</div>
+                        </div>
+                    </a>
+                """, unsafe_allow_html=True)
                 if st.button("❤️ Dodaj do ulubionych", key=f"add_{idx}", use_container_width=True):
                     add_favorite(station)
-                    st.success("Dodano do ulubionych!")
+                    st.success("Dodano!")
 
 # ================================
 # ZAKŁADKA GAZETKI
 # ================================
 with tab2:
     st.header("🛒 Gazetki Promocyjne – Wielkie Kafelki")
-    st.markdown("Kliknij kafelek sklepu → otwiera się oficjalna gazetka")
+    st.markdown("Kliknij kafelek sklepu → otwiera się gazetka")
 
     promotions = [
         {"name": "Biedronka", "image": "https://www.biedronka.pl/sites/default/files/styles/logo/public/logo-biedronka.png", "url": "https://www.biedronka.pl/gazetki", "color": "#D13438"},
@@ -195,7 +261,7 @@ with tab2:
             st.markdown(f"""
                 <div style="text-align: center; margin-bottom: 70px;">
                     <a href="{promo['url']}" target="_blank">
-                        <div style="background-color: {color}; border-radius: 40px; padding: 80px 20px; box-shadow: 0 30px 60px rgba(0,0,0,0.5); height: 400px; display: flex; align-items: center; justify-content: center; flex-direction: column; transition: all 0.5s ease;">
+                        <div style="background-color: {color}; border-radius: 40px; padding: 100px 20px; box-shadow: 0 30px 60px rgba(0,0,0,0.5); height: 400px; display: flex; align-items: center; justify-content: center; flex-direction: column;">
                             <img src="{promo['image']}" width="200" style="margin-bottom: 35px;">
                             <p style="font-size: 48px; color: white; margin: 0;">{promo['name']}</p>
                         </div>
@@ -245,4 +311,4 @@ with st.sidebar:
     else:
         st.info("Kliknij wielki kolorowy kafelek – radio zacznie grać tutaj!")
 
-st.sidebar.success("Gotowe! Kafelki są czyste, wielkie i idealnie klikalne dzięki streamlit-card! ❤️🎉")
+st.sidebar.success("Gotowe! Kafelki czyste, klikalne, radio włącza się od razu! ❤️🎉")
