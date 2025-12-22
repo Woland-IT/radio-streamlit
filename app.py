@@ -74,36 +74,69 @@ with tab1:
 
     # Styl kafelków (bez zmian)
     st.markdown("""
-    <style>
-        .station-tile {background-color: #0072C6; border-radius: 8px; padding: 30px; text-align: center;
-            font-size: 24px; font-weight: bold; color: white; margin: 10px 0; box-shadow: 0 6px 12px rgba(0,0,0,0.2);
-            height: 160px; display: flex; align-items: center; justify-content: center; flex-direction: column;}
-        .tile-small-text {font-size: 16px; margin-top: 8px; opacity: 0.9;}
+<style>
+        .station-tile {
+            background-color: #0072C6;
+            border-radius: 12px;
+            padding: 30px;
+            text-align: center;
+            font-size: 28px;
+            font-weight: bold;
+            color: white;
+            margin: 15px 0;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.3);
+            height: 180px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .station-tile:hover {
+            transform: scale(1.05);
+            box-shadow: 0 12px 24px rgba(0,0,0,0.4);
+        }
+        .tile-small-text {
+            font-size: 18px;
+            margin-top: 10px;
+            opacity: 0.9;
+            font-weight: normal;
+        }
     </style>
     """, unsafe_allow_html=True)
 
     # Ulubione (z filtrem HTTPS)
-    st.subheader("❤️ Moje Ulubione")
+# === Ulubione stacje ===
+    st.subheader("❤️ Moje Ulubione Stacje")
     favorites = get_favorites()
     if favorites:
         cols = st.columns(3)
         for idx, row in enumerate(favorites):
             name, url, tags, bitrate = row[0], safe_url(row[1]), row[2] if len(row)>2 else "brak", row[3] if len(row)>3 else 128
-            if not url or not url.startswith("https://"): continue
+            if not url or not url.startswith("https://"):
+                continue
             color = random.choice(metro_colors)
+            
             with cols[idx % 3]:
-                st.markdown(f"<div class='station-tile' style='background-color: {color};'>{name}<div class='tile-small-text'>{tags} | {bitrate} kbps</div></div>", unsafe_allow_html=True)
-                c1, c2 = st.columns(2)
-                with c1:
-                    if st.button("Wybierz", key=f"fav_p_{idx}"):
-                        st.session_state.selected_station = {"name": name, "url_resolved": url, "tags": tags, "bitrate": bitrate}
-                        st.rerun()
-                with c2:
-                    if st.button("Usuń ❌", key=f"fav_d_{idx}"):
-                        remove_favorite(name)
-                        st.rerun()
+                if st.button("", key=f"fav_play_direct_{idx}", help="Kliknij, aby odtwarzać"):
+                    st.session_state.selected_station = {"name": name, "url_resolved": url, "tags": tags, "bitrate": bitrate}
+                    st.rerun()
+                
+                # Cały kafelek jako "przycisk" przez overlay
+                st.markdown(f"""
+                    <div class="station-tile" style="background-color: {color};">
+                        {name}
+                        <div class="tile-small-text">{tags} | {bitrate} kbps</div>
+                    </div>
+                """, unsafe_allow_html=True)
+                
+                # Przycisk usuń
+                if st.button("Usuń z ulubionych ❌", key=f"fav_del_{idx}"):
+                    remove_favorite(name)
+                    st.rerun()
     else:
-        st.info("Brak ulubionych – dodaj z listy poniżej!")
+        st.info("Brak ulubionych – kliknij ❤️ na kafelku poniżej, żeby dodać!")
 
     # Wyszukiwanie – tylko HTTPS
     st.subheader("🔍 Wszystkie Polskie Stacje (tylko HTTPS – zawsze grają!)")
@@ -125,23 +158,26 @@ with tab1:
         st.warning(f"Brak połączenia z API: {e}. Pokazuję zapasowe – one grają zawsze!")
 
     if valid_stations:
-        cols = st.columns(3)
-        for idx, station in enumerate(valid_stations):
-            color = random.choice(metro_colors)
-            with cols[idx % 3]:
-                st.markdown(f"""
-                    <div class="station-tile" style="background-color: {color};">
-                        {station['name']}
-                        <div class="tile-small-text">{station.get('tags', 'brak')} | {station.get('bitrate', '?')} kbps</div>
-                    </div>
-                """, unsafe_allow_html=True)
-                c1, c2 = st.columns(2)
-                with c1:
-                    if st.button("Wybierz", key=f"play_{idx}"):
+            cols = st.columns(3)
+            for idx, station in enumerate(valid_stations):
+                color = random.choice(metro_colors)
+                
+                with cols[idx % 3]:
+                    # Niewidzialny przycisk na całą szerokość – kliknięcie kafelka włącza radio
+                    if st.button("", key=f"play_direct_{idx}", help="Kliknij cały kafelek, aby słuchać"):
                         st.session_state.selected_station = station
                         st.rerun()
-                with c2:
-                    if st.button("❤️ Dodaj", key=f"add_{idx}"):
+                    
+                    # Sam kafelek
+                    st.markdown(f"""
+                        <div class="station-tile" style="background-color: {color};">
+                            {station['name']}
+                            <div class="tile-small-text">{station.get('tags', 'brak')} | {station.get('bitrate', '?')} kbps</div>
+                        </div>
+                    """, unsafe_allow_html=True)
+                    
+                    # Tylko przycisk dodaj do ulubionych
+                    if st.button("❤️ Dodaj do ulubionych", key=f"add_{idx}"):
                         add_favorite(station)
                         st.success("Dodano!")
                         st.rerun()
