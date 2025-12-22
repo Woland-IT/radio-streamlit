@@ -3,7 +3,7 @@ from pyradios import RadioBrowser
 import sqlite3
 import random
 import urllib.parse
-from streamlit_card import card  # Nowy import – to robi magię!
+from streamlit_card import card  # Wymaga: pip install streamlit-card
 
 # ================================
 # KONFIGURACJA
@@ -60,7 +60,7 @@ metro_colors = [
     "#8E44AD", "#16A085", "#E67E22", "#C0392B", "#27AE60"
 ]
 
-# Fallback stacje (HTTPS)
+# Zawsze działające stacje (HTTPS)
 fallback_stations = [
     {"name": "RMF FM", "url_resolved": "https://rs101-krk.rmfstream.pl/rmf_fm", "tags": "pop, hity", "bitrate": 128},
     {"name": "VOX FM", "url_resolved": "https://ic2.smcdn.pl/3990-1.mp3", "tags": "hity, dance", "bitrate": 128},
@@ -73,7 +73,9 @@ fallback_stations = [
     {"name": "RMF Classic", "url_resolved": "https://rs101-krk.rmfstream.pl/rmf_classic", "tags": "filmowa, relaks", "bitrate": 128},
 ]
 
-# Zakładki
+# ================================
+# ZAKŁADKI
+# ================================
 tab1, tab2 = st.tabs(["🎵 Radio Online", "🛒 Gazetki Promocyjne"])
 
 with tab1:
@@ -91,30 +93,24 @@ with tab1:
                 continue
             color = random.choice(metro_colors)
             with cols[idx % 3]:
-                clicked = card(
+                has_clicked = card(
                     title=name,
                     text=f"{tags} | {bitrate} kbps",
                     styles={
                         "card": {
                             "width": "100%",
-                            "height": "380px",
+                            "height": "400px",
                             "border-radius": "40px",
                             "box-shadow": "0 30px 60px rgba(0,0,0,0.5)",
                             "background-color": color,
-                            "padding": "40px",
+                            "padding": "50px",
                             "text-align": "center",
-                            "font-size": "48px",
-                            "color": "white",
                             "cursor": "pointer",
-                            "margin": "40px 0"
+                            "margin": "30px 0",
+                            "transition": "all 0.4s ease"
                         },
-                        "text": {
-                            "font-size": "32px",
-                            "margin-top": "30px"
-                        },
-                        "title": {
-                            "font-size": "52px"
-                        }
+                        "text": {"font-size": "32px", "margin-top": "30px"},
+                        "title": {"font-size": "52px", "font-weight": "bold"}
                     },
                     on_click=lambda n=name, u=url, t=tags, b=bitrate: st.session_state.update(selected_station={"name": n, "url_resolved": u, "tags": t, "bitrate": b}) or st.rerun()
                 )
@@ -149,40 +145,104 @@ with tab1:
         for idx, station in enumerate(valid_stations):
             color = random.choice(metro_colors)
             with cols[idx % 3]:
-                clicked = card(
+                has_clicked = card(
                     title=station['name'],
                     text=f"{station.get('tags', 'brak')} | {station.get('bitrate', '?')} kbps",
                     styles={
                         "card": {
                             "width": "100%",
-                            "height": "380px",
+                            "height": "400px",
                             "border-radius": "40px",
                             "box-shadow": "0 30px 60px rgba(0,0,0,0.5)",
                             "background-color": color,
-                            "padding": "40px",
+                            "padding": "50px",
                             "text-align": "center",
-                            "font-size": "48px",
-                            "color": "white",
                             "cursor": "pointer",
-                            "margin": "40px 0"
+                            "margin": "30px 0",
+                            "transition": "all 0.4s ease"
                         },
-                        "text": {
-                            "font-size": "32px",
-                            "margin-top": "30px"
-                        },
-                        "title": {
-                            "font-size": "52px"
-                        }
+                        "text": {"font-size": "32px", "margin-top": "30px"},
+                        "title": {"font-size": "52px", "font-weight": "bold"}
                     },
                     on_click=lambda s=station: st.session_state.update(selected_station=s) or st.rerun()
                 )
                 if st.button("❤️ Dodaj do ulubionych", key=f"add_{idx}", use_container_width=True):
                     add_favorite(station)
-                    st.success("Dodano!")
+                    st.success("Dodano do ulubionych!")
 
-# Reszta aplikacji (gazetki i sidebar) – bez zmian z poprzedniej wersji
+# ================================
+# ZAKŁADKA GAZETKI
+# ================================
+with tab2:
+    st.header("🛒 Gazetki Promocyjne – Wielkie Kafelki")
+    st.markdown("Kliknij kafelek sklepu → otwiera się oficjalna gazetka")
 
+    promotions = [
+        {"name": "Biedronka", "image": "https://www.biedronka.pl/sites/default/files/styles/logo/public/logo-biedronka.png", "url": "https://www.biedronka.pl/gazetki", "color": "#D13438"},
+        {"name": "Lidl", "image": "https://www.lidl.pl/assets/pl/logo.svg", "url": "https://www.lidl.pl/c/nasze-gazetki/s10008614", "color": "#0072C6"},
+        {"name": "Kaufland", "image": "https://sklep.kaufland.pl/assets/img/kaufland-logo.svg", "url": "https://sklep.kaufland.pl/gazeta-reklamowa.html", "color": "#E51400"},
+        {"name": "Dino", "image": "https://marketdino.pl/themes/dino/assets/img/logo.svg", "url": "https://marketdino.pl/gazetki-promocyjne", "color": "#F09609"},
+        {"name": "Carrefour", "image": "https://www.carrefour.pl/themes/custom/carrefour/logo.svg", "url": "https://www.carrefour.pl/gazetka-handlowa", "color": "#00A300"},
+        {"name": "Leroy Merlin", "image": "https://www.leroymerlin.pl/img/logo-lm.svg", "url": "https://www.leroymerlin.pl/gazetka/", "color": "#FFC40D"},
+        {"name": "Bricomarché", "image": "https://www.bricomarche.pl/themes/custom/bricomarche/logo.png", "url": "https://www.bricomarche.pl/gazetka", "color": "#A200FF"},
+        {"name": "Empik", "image": "https://www.empik.com/static/img/empik-logo.svg", "url": "https://www.empik.com/promocje", "color": "#00ABA9"},
+    ]
+
+    cols = st.columns(3)
+    for idx, promo in enumerate(promotions):
+        color = promo.get("color", random.choice(metro_colors))
+        with cols[idx % 3]:
+            st.markdown(f"""
+                <div style="text-align: center; margin-bottom: 70px;">
+                    <a href="{promo['url']}" target="_blank">
+                        <div style="background-color: {color}; border-radius: 40px; padding: 80px 20px; box-shadow: 0 30px 60px rgba(0,0,0,0.5); height: 400px; display: flex; align-items: center; justify-content: center; flex-direction: column; transition: all 0.5s ease;">
+                            <img src="{promo['image']}" width="200" style="margin-bottom: 35px;">
+                            <p style="font-size: 48px; color: white; margin: 0;">{promo['name']}</p>
+                        </div>
+                    </a>
+                </div>
+            """, unsafe_allow_html=True)
+
+# ================================
+# SIDEBAR – ODTWARZACZ
+# ================================
 with st.sidebar:
-    # ... (Twój odtwarzacz)
+    st.header("🎵 Teraz gra...")
+    if 'selected_station' in st.session_state:
+        selected = st.session_state.selected_station
+        url = selected['url_resolved']
+        audio_type = get_audio_format(url)
 
-st.sidebar.success("Gotowe! Kafelki są teraz w 100% czyste i idealnie klikalne dzięki streamlit-card! ❤️🎉")
+        st.markdown(f"### **{selected['name']}** 🔊🎶")
+        st.markdown(f"**Tagi:** {selected.get('tags', 'brak')} • **Bitrate:** {selected.get('bitrate', '?')} kbps")
+
+        st.components.v1.html(f"""
+            <audio controls autoplay style="width:100%;">
+                <source src="{url}" type="{audio_type}">
+                Twoja przeglądarka nie obsługuje audio.
+            </audio>
+        """, height=100)
+
+        st.markdown("""
+        <div style="background-color: #e6f7ff; padding: 45px; border-radius: 25px; text-align: center; font-size: 30px; margin: 35px 0;">
+            🔊 <strong>Nie słychać?</strong><br>
+            Naciśnij ▶️ PLAY wyżej!<br>
+            Sprawdź głośność telefonu/komputera.
+        </div>
+        """, unsafe_allow_html=True)
+
+        if selected['name'] not in [f[0] for f in get_favorites()]:
+            if st.button("❤️ Dodaj do ulubionych", use_container_width=True):
+                add_favorite(selected)
+                st.rerun()
+        else:
+            st.success("✅ Już w ulubionych!")
+
+        if st.button("🔇 Zatrzymaj radio", use_container_width=True):
+            if 'selected_station' in st.session_state:
+                del st.session_state.selected_station
+            st.rerun()
+    else:
+        st.info("Kliknij wielki kolorowy kafelek – radio zacznie grać tutaj!")
+
+st.sidebar.success("Gotowe! Kafelki są czyste, wielkie i idealnie klikalne dzięki streamlit-card! ❤️🎉")
