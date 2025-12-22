@@ -186,5 +186,3 @@ with st.sidebar:
         st.info("Wybierz stację z kafelków.")
 
 st.sidebar.success("Radio stabilne – tylko HTTPS/HLS, zawsze gra! 🎉")
-
-Teraz Trójka, Jedynka itp. powinny grać bez problemu. Testuj i daj znać, czy wszystko śmiga! Jeśli chcesz dodać więcej stacji (np. Radio 357 ma HTTPS), wrzuć linki. 🚀
