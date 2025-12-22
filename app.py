@@ -73,6 +73,21 @@ fallback_stations = [
 ]
 
 # ================================
+# ODCZYT PARAMETRÓW Z URL (DLA KLIKNIĘCIA)
+# ================================
+params = st.experimental_get_query_params()
+if "play" in params:
+    st.session_state.selected_station = {
+        "name": params["play"][0],
+        "url_resolved": params["url"][0],
+        "tags": params["tags"][0],
+        "bitrate": params["bitrate"][0]
+    }
+    # Czyścimy parametry, żeby nie zapętlić
+    st.experimental_set_query_params()
+    st.rerun()
+
+# ================================
 # ZAKŁADKI
 # ================================
 tab1, tab2 = st.tabs(["🎵 Radio Online", "🛒 Gazetki Promocyjne"])
@@ -81,65 +96,36 @@ with tab1:
     st.header("🇵🇱 Polskie Radio dla Seniora")
     st.markdown("### Kliknij cały wielki kolorowy kafelek – radio gra od razu po prawej! 🎶🔊")
 
-    # JavaScript – bezpieczny sposób na kliknięcie bez błędów React
-    st.markdown("""
-    <script>
-        function playStation(name, url, tags, bitrate) {
-            // Tworzy ukryty formularz POST
-            const form = document.createElement('form');
-            form.method = 'POST';
-            form.style.display = 'none';
-            
-            const inputs = {
-                'play_name': name,
-                'play_url': url,
-                'play_tags': tags,
-                'play_bitrate': bitrate
-            };
-            
-            for (const key in inputs) {
-                const input = document.createElement('input');
-                input.type = 'hidden';
-                input.name = key;
-                input.value = inputs[key];
-                form.appendChild(input);
-            }
-            
-            document.body.appendChild(form);
-            form.submit();
-        }
-    </script>
-    """, unsafe_allow_html=True)
-
-    # Styl – czysty kafelek
+    # Styl kafelków – czysty i piękny
     st.markdown("""
     <style>
         .clickable-tile {
             background-color: #0072C6;
             border-radius: 40px;
-            padding: 110px 20px;
+            padding: 100px 20px;
             text-align: center;
-            font-size: 52px;
+            font-size: 50px;
             font-weight: bold;
             color: white;
-            margin: 50px 0;
-            box-shadow: 0 35px 70px rgba(0,0,0,0.5);
-            height: 420px;
+            margin: 40px 0;
+            box-shadow: 0 30px 60px rgba(0,0,0,0.5);
+            height: 400px;
+            width: 100%;
             display: flex;
             align-items: center;
             justify-content: center;
             flex-direction: column;
             cursor: pointer;
-            transition: all 0.6s ease;
+            transition: all 0.5s ease;
             user-select: none;
         }
         .clickable-tile:hover {
-            transform: translateY(-40px) scale(1.15);
+            transform: translateY(-40px) scale(1.12);
             box-shadow: 0 80px 140px rgba(0,0,0,0.6);
         }
         .tile-small-text {
             font-size: 34px;
-            margin-top: 35px;
+            margin-top: 30px;
             opacity: 0.9;
         }
         a.tile-link {
@@ -152,18 +138,6 @@ with tab1:
     </style>
     """, unsafe_allow_html=True)
 
-    # Odczytujemy dane z POST
-    if "play_name" in st.experimental_get_query_params():
-        params = st.experimental_get_query_params()
-        st.session_state.selected_station = {
-            "name": params["play_name"][0],
-            "url_resolved": params["play_url"][0],
-            "tags": params["play_tags"][0],
-            "bitrate": params.get("play_bitrate", ["?"])[0]
-        }
-        st.experimental_set_query_params()
-        st.rerun()
-
     # === Ulubione ===
     st.subheader("❤️ Moje Ulubione")
     favorites = get_favorites()
@@ -174,10 +148,12 @@ with tab1:
             if not url or not url.startswith("https://"):
                 continue
             color = random.choice(metro_colors)
-            name_js = name.replace("'", "\\'")
+            encoded_name = urllib.parse.quote(name)
+            encoded_url = urllib.parse.quote(url)
+            encoded_tags = urllib.parse.quote(tags)
             with cols[idx % 3]:
                 st.markdown(f"""
-                    <a href="javascript:void(0)" class="tile-link" onclick="playStation('{name_js}', '{url}', '{tags}', '{bitrate}')">
+                    <a href="?play={encoded_name}&url={encoded_url}&tags={encoded_tags}&bitrate={bitrate}" target="_self" class="tile-link">
                         <div class="clickable-tile" style="background-color: {color};">
                             {name}
                             <div class="tile-small-text">{tags} | {bitrate} kbps</div>
@@ -214,16 +190,16 @@ with tab1:
         cols = st.columns(3)
         for idx, station in enumerate(valid_stations):
             color = random.choice(metro_colors)
-            name_js = station['name'].replace("'", "\\'")
-            url = station['url_resolved']
-            tags = station.get('tags', 'brak')
+            encoded_name = urllib.parse.quote(station['name'])
+            encoded_url = urllib.parse.quote(station['url_resolved'])
+            encoded_tags = urllib.parse.quote(station.get('tags', 'brak'))
             bitrate = station.get('bitrate', '?')
             with cols[idx % 3]:
                 st.markdown(f"""
-                    <a href="javascript:void(0)" class="tile-link" onclick="playStation('{name_js}', '{url}', '{tags}', '{bitrate}')">
+                    <a href="?play={encoded_name}&url={encoded_url}&tags={encoded_tags}&bitrate={bitrate}" target="_self" class="tile-link">
                         <div class="clickable-tile" style="background-color: {color};">
                             {station['name']}
-                            <div class="tile-small-text">{tags} | {bitrate} kbps</div>
+                            <div class="tile-small-text">{station.get('tags', 'brak')} | {bitrate} kbps</div>
                         </div>
                     </a>
                 """, unsafe_allow_html=True)
@@ -232,7 +208,7 @@ with tab1:
                     st.success("Dodano!")
 
 # ================================
-# ZAKŁADKA GAZETKI (bez zmian)
+# ZAKŁADKA GAZETKI
 # ================================
 with tab2:
     st.header("🛒 Gazetki Promocyjne – Wielkie Kafelki")
@@ -306,4 +282,4 @@ with st.sidebar:
     else:
         st.info("Kliknij wielki kolorowy kafelek – radio zacznie grać tutaj!")
 
-st.sidebar.success("Gotowe! Kafelki są teraz 100% czyste i idealnie klikalne – działa na Streamlit Cloud! ❤️🎉")
+st.sidebar.success("Gotowe! Kafelki czyste, wielki i klikalne – działa na Streamlit Cloud! ❤️🎉")
