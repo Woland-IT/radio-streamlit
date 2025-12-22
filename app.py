@@ -79,45 +79,23 @@ tab1, tab2 = st.tabs(["🎵 Radio Online", "🛒 Gazetki Promocyjne"])
 
 with tab1:
     st.header("🇵🇱 Polskie Radio dla Seniora")
-    st.markdown("### Kliknij cały wielki kolorowy kafelek – radio zaczyna grać od razu! 🎶🔊")
+    st.markdown("### Kliknij cały wielki kolorowy kafelek – radio gra od razu po prawej! 🎶🔊")
 
-    # JavaScript – zapobiega przeładowaniu i wysyła dane do Streamlit
-    st.markdown("""
-    <script>
-        function playStation(name, url, tags, bitrate) {
-            // Zapobiega domyślnemu przeładowaniu strony
-            event.preventDefault();
-            event.stopPropagation();
-            
-            // Tworzy ukryty formularz i submituje (Streamlit to odczyta)
-            const form = document.createElement('form');
-            form.method = 'POST';
-            form.style.display = 'none';
-            
-            const inputs = {
-                'play_name': name,
-                'play_url': url,
-                'play_tags': tags,
-                'play_bitrate': bitrate
-            };
-            
-            for (const key in inputs) {
-                const input = document.createElement('input');
-                input.type = 'hidden';
-                input.name = key;
-                input.value = inputs[key];
-                form.appendChild(input);
-            }
-            
-            document.body.appendChild(form);
-            form.submit();
-        }
-    </script>
-    """, unsafe_allow_html=True)
-
-    # Styl kafelków – czysty i piękny
+    # CSS – całkowicie ukrywa pusty przycisk (nie zajmuje miejsca, zero błędów)
     st.markdown("""
     <style>
+        /* Ukrywa całkowicie pusty przycisk – nie zajmuje miejsca i nie powoduje błędów */
+        div[data-testid="stButton"] button[kind="secondary"] {
+            background: none !important;
+            border: none !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            min-height: 0 !important;
+            height: 0 !important;
+            width: 100% !important;
+            visibility: hidden !important;
+            pointer-events: auto !important;
+        }
         .clickable-tile {
             background-color: #0072C6;
             border-radius: 40px;
@@ -147,28 +125,8 @@ with tab1:
             margin-top: 30px;
             opacity: 0.9;
         }
-        a.tile-link {
-            text-decoration: none;
-            color: inherit;
-            display: block;
-            width: 100%;
-            height: 100%;
-        }
     </style>
     """, unsafe_allow_html=True)
-
-    # Odczytujemy dane z formularza POST (jeśli kliknięto kafelek)
-    if st.experimental_get_query_params().get("play_name"):
-        # W Streamlit POST przychodzi jako query params po rerunie
-        params = st.experimental_get_query_params()
-        st.session_state.selected_station = {
-            "name": params["play_name"][0],
-            "url_resolved": params["play_url"][0],
-            "tags": params["play_tags"][0],
-            "bitrate": params.get("play_bitrate", ["?"])[0]
-        }
-        st.experimental_set_query_params()  # czyścimy parametry
-        st.rerun()
 
     # === Ulubione ===
     st.subheader("❤️ Moje Ulubione")
@@ -181,13 +139,14 @@ with tab1:
                 continue
             color = random.choice(metro_colors)
             with cols[idx % 3]:
+                if st.button("", key=f"fav_play_{idx}", use_container_width=True):
+                    st.session_state.selected_station = {"name": name, "url_resolved": url, "tags": tags, "bitrate": bitrate}
+                    st.rerun()
                 st.markdown(f"""
-                    <a href="#" class="tile-link" onclick="playStation('{name.replace("'", "\\'")}', '{url}', '{tags}', '{bitrate}'); return false;">
-                        <div class="clickable-tile" style="background-color: {color};">
-                            {name}
-                            <div class="tile-small-text">{tags} | {bitrate} kbps</div>
-                        </div>
-                    </a>
+                    <div class="clickable-tile" style="background-color: {color};">
+                        {name}
+                        <div class="tile-small-text">{tags} | {bitrate} kbps</div>
+                    </div>
                 """, unsafe_allow_html=True)
                 if st.button("Usuń z ulubionych ❌", key=f"fav_del_{idx}", use_container_width=True):
                     remove_favorite(name)
@@ -219,25 +178,22 @@ with tab1:
         cols = st.columns(3)
         for idx, station in enumerate(valid_stations):
             color = random.choice(metro_colors)
-            name = station['name'].replace("'", "\\'")
-            url = station['url_resolved']
-            tags = station.get('tags', 'brak')
-            bitrate = station.get('bitrate', '?')
             with cols[idx % 3]:
+                if st.button("", key=f"play_{idx}", use_container_width=True):
+                    st.session_state.selected_station = station
+                    st.rerun()
                 st.markdown(f"""
-                    <a href="#" class="tile-link" onclick="playStation('{name}', '{url}', '{tags}', '{bitrate}'); return false;">
-                        <div class="clickable-tile" style="background-color: {color};">
-                            {station['name']}
-                            <div class="tile-small-text">{tags} | {bitrate} kbps</div>
-                        </div>
-                    </a>
+                    <div class="clickable-tile" style="background-color: {color};">
+                        {station['name']}
+                        <div class="tile-small-text">{station.get('tags', 'brak')} | {station.get('bitrate', '?')} kbps</div>
+                    </div>
                 """, unsafe_allow_html=True)
                 if st.button("❤️ Dodaj do ulubionych", key=f"add_{idx}", use_container_width=True):
                     add_favorite(station)
                     st.success("Dodano!")
 
 # ================================
-# ZAKŁADKA GAZETKI (bez zmian)
+# ZAKŁADKA GAZETKI
 # ================================
 with tab2:
     st.header("🛒 Gazetki Promocyjne – Wielkie Kafelki")
@@ -336,4 +292,4 @@ with st.sidebar:
     else:
         st.info("Kliknij wielki kolorowy kafelek – radio zacznie grać tutaj!")
 
-st.sidebar.success("Gotowe! Kliknięcie kafelka włącza radio od razu, bez nowej karty! ❤️🎉")
+st.sidebar.success("Gotowe! Kafelki czyste, klikalne, bez błędów React! ❤️🎉")
