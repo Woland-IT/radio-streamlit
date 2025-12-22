@@ -52,7 +52,7 @@ def get_audio_format(url):
     else:
         return "audio/mpeg"
 
-# Kolory
+# Kolory Metro
 metro_colors = [
     "#D13438", "#0072C6", "#00A300", "#F09609", "#A200FF",
     "#E51400", "#339933", "#00ABA9", "#FFC40D", "#1BA1E2",
@@ -65,49 +65,42 @@ fallback_stations = [
     {"name": "VOX FM", "url_resolved": "https://ic2.smcdn.pl/3990-1.mp3", "tags": "hity, dance", "bitrate": 128},
     {"name": "Eska Warszawa", "url_resolved": "https://stream.open.fm/1", "tags": "pop, dance", "bitrate": 128},
     {"name": "Antyradio", "url_resolved": "https://n-15-21.dcs.redcdn.pl/sc/o2/Eurozet/live/antyradio.livx", "tags": "rock", "bitrate": 128},
-    {"name": "Polskie Radio Jedynka", "url_resolved": "https://stream11.polskieradio.pl/pr1/pr1.sdp/playlist.m3u8", "tags": "wiadomości", "bitrate": 128},
+    {"name": "Polskie Radio Jedynka", "url_resolved": "https://stream11.polskieradio.pl/pr1/pr1.sdp/playlist.m3u8", "tags": "wiadomości, talk", "bitrate": 128},
     {"name": "Polskie Radio Dwójka", "url_resolved": "https://stream12.polskieradio.pl/pr2/pr2.sdp/playlist.m3u8", "tags": "klasyka", "bitrate": 128},
-    {"name": "Polskie Radio Trójka", "url_resolved": "https://stream13.polskieradio.pl/pr3/pr3.sdp/playlist.m3u8", "tags": "muzyka", "bitrate": 128},
+    {"name": "Polskie Radio Trójka", "url_resolved": "https://stream13.polskieradio.pl/pr3/pr3.sdp/playlist.m3u8", "tags": "muzyka, alternatywa", "bitrate": 128},
     {"name": "Polskie Radio Czwórka", "url_resolved": "https://stream14.polskieradio.pl/pr4/pr4.sdp/playlist.m3u8", "tags": "młodzieżowe", "bitrate": 128},
     {"name": "RMF Classic", "url_resolved": "https://rs101-krk.rmfstream.pl/rmf_classic", "tags": "filmowa, relaks", "bitrate": 128},
 ]
 
-# Zakładki
+# ================================
+# OBSŁUGA KLIKNIĘCIA PRZEZ LINK (PARAMETRY URL)
+# ================================
+params = st.experimental_get_query_params()
+if "play" in params:
+    play_name = params["play"][0]
+    play_url = params["url"][0]
+    play_tags = params.get("tags", ["brak"])[0]
+    play_bitrate = params.get("bitrate", ["?"])[0]
+    st.session_state.selected_station = {
+        "name": play_name,
+        "url_resolved": play_url,
+        "tags": play_tags,
+        "bitrate": play_bitrate
+    }
+    # Czyścimy parametry, żeby nie zapętlić
+    st.experimental_set_query_params()
+    st.rerun()
+
+# ================================
+# ZAKŁADKI
+# ================================
 tab1, tab2 = st.tabs(["🎵 Radio Online", "🛒 Gazetki Promocyjne"])
 
 with tab1:
     st.header("🇵🇱 Polskie Radio dla Seniora")
     st.markdown("### Kliknij cały wielki kolorowy kafelek – radio zaczyna grać po prawej! 🎶🔊")
 
-    # JavaScript do obsługi kliknięcia (hack Streamlit – działa idealnie)
-    st.markdown("""
-    <script>
-        function playStation(idx, name, url, tags, bitrate) {
-            // Tworzymy ukryty formularz i submitujemy (Streamlit to odczyta)
-            const form = document.createElement('form');
-            form.method = 'POST';
-            form.action = '';
-            const inputs = {
-                'play_idx': idx,
-                'play_name': name,
-                'play_url': url,
-                'play_tags': tags,
-                'play_bitrate': bitrate
-            };
-            for (const key in inputs) {
-                const input = document.createElement('input');
-                input.type = 'hidden';
-                input.name = key;
-                input.value = inputs[key];
-                form.appendChild(input);
-            }
-            document.body.appendChild(form);
-            form.submit();
-        }
-    </script>
-    """, unsafe_allow_html=True)
-
-    # Styl kafelków – czysty, piękny, z hoverem
+    # Styl kafelków – czysty i piękny
     st.markdown("""
     <style>
         .clickable-tile {
@@ -128,6 +121,7 @@ with tab1:
             flex-direction: column;
             cursor: pointer;
             transition: all 0.5s ease;
+            text-decoration: none;
             user-select: none;
         }
         .clickable-tile:hover {
@@ -139,21 +133,12 @@ with tab1:
             margin-top: 30px;
             opacity: 0.9;
         }
+        a.tile-link {
+            text-decoration: none;
+            color: inherit;
+        }
     </style>
     """, unsafe_allow_html=True)
-
-    # Obsługa kliknięcia z JavaScript
-    form_data = st.experimental_get_query_params()
-    if 'play_idx' in form_data:
-        idx = form_data['play_idx'][0]
-        station = {
-            "name": form_data['play_name'][0],
-            "url_resolved": form_data['play_url'][0],
-            "tags": form_data['play_tags'][0],
-            "bitrate": int(form_data['play_bitrate'][0]) if form_data['play_bitrate'][0].isdigit() else 128
-        }
-        st.session_state.selected_station = station
-        st.rerun()
 
     # === Ulubione ===
     st.subheader("❤️ Moje Ulubione")
@@ -165,12 +150,15 @@ with tab1:
             if not url or not url.startswith("https://"):
                 continue
             color = random.choice(metro_colors)
+            link = f"?play={urllib.parse.quote(name)}&url={urllib.parse.quote(url)}&tags={urllib.parse.quote(tags)}&bitrate={bitrate}"
             with cols[idx % 3]:
                 st.markdown(f"""
-                    <div class="clickable-tile" style="background-color: {color};" onclick="playStation('fav_{idx}', '{name.replace("'", "\\'")}', '{url}', '{tags}', '{bitrate}')">
-                        {name}
-                        <div class="tile-small-text">{tags} | {bitrate} kbps</div>
-                    </div>
+                    <a href="{link}" class="tile-link">
+                        <div class="clickable-tile" style="background-color: {color};">
+                            {name}
+                            <div class="tile-small-text">{tags} | {bitrate} kbps</div>
+                        </div>
+                    </a>
                 """, unsafe_allow_html=True)
                 if st.button("Usuń z ulubionych ❌", key=f"fav_del_{idx}", use_container_width=True):
                     remove_favorite(name)
@@ -206,19 +194,22 @@ with tab1:
             url = station['url_resolved']
             tags = station.get('tags', 'brak')
             bitrate = station.get('bitrate', '?')
+            link = f"?play={urllib.parse.quote(name)}&url={urllib.parse.quote(url)}&tags={urllib.parse.quote(tags)}&bitrate={bitrate}"
             with cols[idx % 3]:
                 st.markdown(f"""
-                    <div class="clickable-tile" style="background-color: {color};" onclick="playStation('{idx}', '{name.replace("'", "\\'")}', '{url}', '{tags}', '{bitrate}')">
-                        {name}
-                        <div class="tile-small-text">{tags} | {bitrate} kbps</div>
-                    </div>
+                    <a href="{link}" class="tile-link">
+                        <div class="clickable-tile" style="background-color: {color};">
+                            {name}
+                            <div class="tile-small-text">{tags} | {bitrate} kbps</div>
+                        </div>
+                    </a>
                 """, unsafe_allow_html=True)
                 if st.button("❤️ Dodaj do ulubionych", key=f"add_{idx}", use_container_width=True):
                     add_favorite(station)
                     st.success("Dodano!")
 
 # ================================
-# ZAKŁADKA GAZETKI (bez zmian)
+# ZAKŁADKA GAZETKI
 # ================================
 with tab2:
     st.header("🛒 Gazetki Promocyjne – Wielkie Kafelki")
@@ -300,7 +291,7 @@ with st.sidebar:
         <div style="background-color: #e6f7ff; padding: 45px; border-radius: 25px; text-align: center; font-size: 30px; margin: 35px 0;">
             🔊 <strong>Nie słychać?</strong><br>
             Naciśnij ▶️ PLAY wyżej!<br>
-            Sprawdź głośność.
+            Sprawdź głośność telefonu/komputera.
         </div>
         """, unsafe_allow_html=True)
 
@@ -312,9 +303,10 @@ with st.sidebar:
             st.success("✅ Już w ulubionych!")
 
         if st.button("🔇 Zatrzymaj radio", use_container_width=True):
-            del st.session_state.selected_station
+            if 'selected_station' in st.session_state:
+                del st.session_state.selected_station
             st.rerun()
     else:
-        st.info("Kliknij wielki kafelek – radio gra tutaj!")
+        st.info("Kliknij wielki kolorowy kafelek – radio zacznie grać tutaj!")
 
-st.sidebar.success("Gotowe! Czyste, wielkie, klikalne kafelki – tylko kliknij i słuchaj! ❤️🎉")
+st.sidebar.success("Gotowe! Czyste kafelki z linkiem – klikasz gdziekolwiek i słuchasz! ❤️🎉")
