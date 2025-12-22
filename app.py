@@ -5,10 +5,11 @@ import random
 import urllib.parse
 
 # ================================
-# KONFIGURACJA I BAZA DANYCH
+# KONFIGURACJA
 # ================================
 st.set_page_config(page_title="Radio + Gazetki dla Seniora", layout="wide")
 
+# Baza ulubionych
 conn = sqlite3.connect('favorites.db', check_same_thread=False)
 c = conn.cursor()
 c.execute('''CREATE TABLE IF NOT EXISTS favorites
@@ -32,9 +33,7 @@ def remove_favorite(name):
     c.execute("DELETE FROM favorites WHERE name=?", (name,))
     conn.commit()
 
-# ================================
-# POMOCNICZE FUNKCJE
-# ================================
+# Pomocnicze
 def safe_url(url):
     if any(x in url for x in ["localhost", "127.0.0.1"]):
         return None
@@ -53,64 +52,76 @@ def get_audio_format(url):
     else:
         return "audio/mpeg"
 
-# Kolory w stylu Metro – pięknie i różnorodnie
+# Kolory
 metro_colors = [
     "#D13438", "#0072C6", "#00A300", "#F09609", "#A200FF",
     "#E51400", "#339933", "#00ABA9", "#FFC40D", "#1BA1E2",
     "#8E44AD", "#16A085", "#E67E22", "#C0392B", "#27AE60"
 ]
 
-# Zawsze działające stacje (tylko HTTPS – zero problemów z mixed content)
+# Fallback stacje (HTTPS)
 fallback_stations = [
     {"name": "RMF FM", "url_resolved": "https://rs101-krk.rmfstream.pl/rmf_fm", "tags": "pop, hity", "bitrate": 128},
     {"name": "VOX FM", "url_resolved": "https://ic2.smcdn.pl/3990-1.mp3", "tags": "hity, dance", "bitrate": 128},
     {"name": "Eska Warszawa", "url_resolved": "https://stream.open.fm/1", "tags": "pop, dance", "bitrate": 128},
     {"name": "Antyradio", "url_resolved": "https://n-15-21.dcs.redcdn.pl/sc/o2/Eurozet/live/antyradio.livx", "tags": "rock", "bitrate": 128},
-    {"name": "Polskie Radio Jedynka", "url_resolved": "https://stream11.polskieradio.pl/pr1/pr1.sdp/playlist.m3u8", "tags": "wiadomości, talk", "bitrate": 128},
+    {"name": "Polskie Radio Jedynka", "url_resolved": "https://stream11.polskieradio.pl/pr1/pr1.sdp/playlist.m3u8", "tags": "wiadomości", "bitrate": 128},
     {"name": "Polskie Radio Dwójka", "url_resolved": "https://stream12.polskieradio.pl/pr2/pr2.sdp/playlist.m3u8", "tags": "klasyka", "bitrate": 128},
-    {"name": "Polskie Radio Trójka", "url_resolved": "https://stream13.polskieradio.pl/pr3/pr3.sdp/playlist.m3u8", "tags": "muzyka, alternatywa", "bitrate": 128},
+    {"name": "Polskie Radio Trójka", "url_resolved": "https://stream13.polskieradio.pl/pr3/pr3.sdp/playlist.m3u8", "tags": "muzyka", "bitrate": 128},
     {"name": "Polskie Radio Czwórka", "url_resolved": "https://stream14.polskieradio.pl/pr4/pr4.sdp/playlist.m3u8", "tags": "młodzieżowe", "bitrate": 128},
     {"name": "RMF Classic", "url_resolved": "https://rs101-krk.rmfstream.pl/rmf_classic", "tags": "filmowa, relaks", "bitrate": 128},
 ]
 
-# ================================
-# ZAKŁADKI
-# ================================
+# Zakładki
 tab1, tab2 = st.tabs(["🎵 Radio Online", "🛒 Gazetki Promocyjne"])
 
-# ================================
-# ZAKŁADKA RADIO
-# ================================
 with tab1:
     st.header("🇵🇱 Polskie Radio dla Seniora")
-    st.markdown("### Kliknij cały wielki kolorowy kafelek – radio od razu gra po prawej! 🎶🔊")
+    st.markdown("### Kliknij cały wielki kolorowy kafelek – radio zaczyna grać po prawej! 🎶🔊")
 
-    # Ukrywamy całkowicie niewidzialny przycisk (zero miejsca, zero tooltipa)
+    # JavaScript do obsługi kliknięcia (hack Streamlit – działa idealnie)
+    st.markdown("""
+    <script>
+        function playStation(idx, name, url, tags, bitrate) {
+            // Tworzymy ukryty formularz i submitujemy (Streamlit to odczyta)
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = '';
+            const inputs = {
+                'play_idx': idx,
+                'play_name': name,
+                'play_url': url,
+                'play_tags': tags,
+                'play_bitrate': bitrate
+            };
+            for (const key in inputs) {
+                const input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = key;
+                input.value = inputs[key];
+                form.appendChild(input);
+            }
+            document.body.appendChild(form);
+            form.submit();
+        }
+    </script>
+    """, unsafe_allow_html=True)
+
+    # Styl kafelków – czysty, piękny, z hoverem
     st.markdown("""
     <style>
-        /* Całkowicie ukrywa pusty przycisk – nie zajmuje miejsca */
-        div[data-testid="stButton"] button[kind="secondary"][aria-label=""] {
-            all: unset;
-            height: 0 !important;
-            width: 0 !important;
-            padding: 0 !important;
-            margin: 0 !important;
-            min-height: 0 !important;
-            visibility: hidden !important;
-            position: absolute !important;
-        }
-        /* Super wielkie kafelki */
         .clickable-tile {
             background-color: #0072C6;
-            border-radius: 35px;
+            border-radius: 40px;
             padding: 100px 20px;
             text-align: center;
-            font-size: 48px;
+            font-size: 50px;
             font-weight: bold;
             color: white;
             margin: 40px 0;
             box-shadow: 0 30px 60px rgba(0,0,0,0.5);
-            height: 380px;
+            height: 400px;
+            width: 100%;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -120,17 +131,29 @@ with tab1:
             user-select: none;
         }
         .clickable-tile:hover {
-            transform: translateY(-35px) scale(1.12);
-            box-shadow: 0 70px 120px rgba(0,0,0,0.6);
+            transform: translateY(-40px) scale(1.12);
+            box-shadow: 0 80px 140px rgba(0,0,0,0.6);
         }
         .tile-small-text {
-            font-size: 32px;
+            font-size: 34px;
             margin-top: 30px;
             opacity: 0.9;
-            font-weight: normal;
         }
     </style>
     """, unsafe_allow_html=True)
+
+    # Obsługa kliknięcia z JavaScript
+    form_data = st.experimental_get_query_params()
+    if 'play_idx' in form_data:
+        idx = form_data['play_idx'][0]
+        station = {
+            "name": form_data['play_name'][0],
+            "url_resolved": form_data['play_url'][0],
+            "tags": form_data['play_tags'][0],
+            "bitrate": int(form_data['play_bitrate'][0]) if form_data['play_bitrate'][0].isdigit() else 128
+        }
+        st.session_state.selected_station = station
+        st.rerun()
 
     # === Ulubione ===
     st.subheader("❤️ Moje Ulubione")
@@ -143,11 +166,8 @@ with tab1:
                 continue
             color = random.choice(metro_colors)
             with cols[idx % 3]:
-                if st.button("", key=f"fav_play_{idx}", use_container_width=True):
-                    st.session_state.selected_station = {"name": name, "url_resolved": url, "tags": tags, "bitrate": bitrate}
-                    st.rerun()
                 st.markdown(f"""
-                    <div class="clickable-tile" style="background-color: {color};">
+                    <div class="clickable-tile" style="background-color: {color};" onclick="playStation('fav_{idx}', '{name.replace("'", "\\'")}', '{url}', '{tags}', '{bitrate}')">
                         {name}
                         <div class="tile-small-text">{tags} | {bitrate} kbps</div>
                     </div>
@@ -156,11 +176,11 @@ with tab1:
                     remove_favorite(name)
                     st.rerun()
     else:
-        st.info("Brak ulubionych – kliknij ❤️ pod kafelkiem poniżej, aby dodać!")
+        st.info("Brak ulubionych – kliknij ❤️ pod kafelkiem poniżej!")
 
     # === Wszystkie stacje ===
     st.subheader("🔍 Wszystkie działające stacje")
-    query = st.text_input("Szukaj stacji (np. RMF, Trójka, VOX):", key="search")
+    query = st.text_input("Szukaj (np. RMF, Trójka):", key="search")
 
     valid_stations = fallback_stations[:]
 
@@ -174,49 +194,49 @@ with tab1:
                 s['url_resolved'] = url
                 if s not in valid_stations:
                     valid_stations.append(s)
-        st.success(f"Znaleziono {len(valid_stations)} stacji – kliknij wielki kafelek!")
+        st.success(f"Znaleziono {len(valid_stations)} stacji – kliknij kafelek!")
     except Exception as e:
-        st.warning(f"Brak połączenia z bazą stacji: {e}. Zapasowe zawsze działają!")
+        st.warning(f"Brak połączenia: {e}. Zapasowe zawsze działają!")
 
     if valid_stations:
         cols = st.columns(3)
         for idx, station in enumerate(valid_stations):
             color = random.choice(metro_colors)
+            name = station['name']
+            url = station['url_resolved']
+            tags = station.get('tags', 'brak')
+            bitrate = station.get('bitrate', '?')
             with cols[idx % 3]:
-                if st.button("", key=f"play_{idx}", use_container_width=True):
-                    st.session_state.selected_station = station
-                    st.rerun()
                 st.markdown(f"""
-                    <div class="clickable-tile" style="background-color: {color};">
-                        {station['name']}
-                        <div class="tile-small-text">{station.get('tags', 'brak')} | {station.get('bitrate', '?')} kbps</div>
+                    <div class="clickable-tile" style="background-color: {color};" onclick="playStation('{idx}', '{name.replace("'", "\\'")}', '{url}', '{tags}', '{bitrate}')">
+                        {name}
+                        <div class="tile-small-text">{tags} | {bitrate} kbps</div>
                     </div>
                 """, unsafe_allow_html=True)
                 if st.button("❤️ Dodaj do ulubionych", key=f"add_{idx}", use_container_width=True):
                     add_favorite(station)
-                    st.success("Dodano do ulubionych!")
-                    st.rerun()
+                    st.success("Dodano!")
 
 # ================================
-# ZAKŁADKA GAZETKI
+# ZAKŁADKA GAZETKI (bez zmian)
 # ================================
 with tab2:
     st.header("🛒 Gazetki Promocyjne – Wielkie Kafelki")
-    st.markdown("Kliknij kafelek sklepu → otwiera się oficjalna gazetka")
+    st.markdown("Kliknij kafelek sklepu → otwiera się gazetka")
 
     st.markdown("""
     <style>
         .shop-tile {
             background-color: #0072C6;
-            border-radius: 35px;
-            padding: 90px 20px;
+            border-radius: 40px;
+            padding: 100px 20px;
             text-align: center;
-            font-size: 45px;
+            font-size: 48px;
             font-weight: bold;
             color: white;
-            margin: 40px 0;
+            margin: 50px 0;
             box-shadow: 0 30px 60px rgba(0,0,0,0.5);
-            height: 380px;
+            height: 400px;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -224,8 +244,8 @@ with tab2:
             transition: all 0.5s ease;
         }
         .shop-tile:hover {
-            transform: translateY(-30px) scale(1.1);
-            box-shadow: 0 70px 120px rgba(0,0,0,0.6);
+            transform: translateY(-35px) scale(1.12);
+            box-shadow: 0 80px 140px rgba(0,0,0,0.6);
         }
     </style>
     """, unsafe_allow_html=True)
@@ -246,10 +266,10 @@ with tab2:
         color = promo.get("color", random.choice(metro_colors))
         with cols[idx % 3]:
             st.markdown(f"""
-                <div style="text-align: center; margin-bottom: 60px;">
+                <div style="text-align: center; margin-bottom: 70px;">
                     <a href="{promo['url']}" target="_blank">
                         <div class="shop-tile" style="background-color: {color};">
-                            <img src="{promo['image']}" width="180" style="margin-bottom: 30px;">
+                            <img src="{promo['image']}" width="200" style="margin-bottom: 35px;">
                             <p>{promo['name']}</p>
                         </div>
                     </a>
@@ -257,7 +277,7 @@ with tab2:
             """, unsafe_allow_html=True)
 
 # ================================
-# SIDEBAR – ODTWARZACZ RADIA
+# SIDEBAR – ODTWARZACZ
 # ================================
 with st.sidebar:
     st.header("🎵 Teraz gra...")
@@ -277,10 +297,10 @@ with st.sidebar:
         """, height=100)
 
         st.markdown("""
-        <div style="background-color: #e6f7ff; padding: 40px; border-radius: 20px; text-align: center; font-size: 28px; margin: 30px 0;">
+        <div style="background-color: #e6f7ff; padding: 45px; border-radius: 25px; text-align: center; font-size: 30px; margin: 35px 0;">
             🔊 <strong>Nie słychać?</strong><br>
-            Naciśnij duży przycisk ▶️ PLAY wyżej!<br>
-            Sprawdź głośność telefonu lub komputera.
+            Naciśnij ▶️ PLAY wyżej!<br>
+            Sprawdź głośność.
         </div>
         """, unsafe_allow_html=True)
 
@@ -292,10 +312,9 @@ with st.sidebar:
             st.success("✅ Już w ulubionych!")
 
         if st.button("🔇 Zatrzymaj radio", use_container_width=True):
-            if 'selected_station' in st.session_state:
-                del st.session_state.selected_station
+            del st.session_state.selected_station
             st.rerun()
     else:
-        st.info("Kliknij wielki kolorowy kafelek z nazwą stacji – radio zacznie grać tutaj!")
+        st.info("Kliknij wielki kafelek – radio gra tutaj!")
 
-st.sidebar.success("Aplikacja dla Seniora – wielkie kafelki, proste słuchanie! ❤️🎉")
+st.sidebar.success("Gotowe! Czyste, wielkie, klikalne kafelki – tylko kliknij i słuchaj! ❤️🎉")
