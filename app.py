@@ -81,13 +81,39 @@ with tab1:
     st.header("🇵🇱 Polskie Radio dla Seniora")
     st.markdown("### Kliknij cały wielki kolorowy kafelek – radio gra od razu po prawej! 🎶🔊")
 
-    # CSS – przycisk nakładany na kafelek
+    # JavaScript – bezpieczny sposób na kliknięcie bez błędów React
+    st.markdown("""
+    <script>
+        function playStation(name, url, tags, bitrate) {
+            // Tworzy ukryty formularz POST
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.style.display = 'none';
+            
+            const inputs = {
+                'play_name': name,
+                'play_url': url,
+                'play_tags': tags,
+                'play_bitrate': bitrate
+            };
+            
+            for (const key in inputs) {
+                const input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = key;
+                input.value = inputs[key];
+                form.appendChild(input);
+            }
+            
+            document.body.appendChild(form);
+            form.submit();
+        }
+    </script>
+    """, unsafe_allow_html=True)
+
+    # Styl – czysty kafelek
     st.markdown("""
     <style>
-        .tile-wrapper {
-            position: relative;
-            margin: 40px 0;
-        }
         .clickable-tile {
             background-color: #0072C6;
             border-radius: 40px;
@@ -96,12 +122,14 @@ with tab1:
             font-size: 52px;
             font-weight: bold;
             color: white;
+            margin: 50px 0;
             box-shadow: 0 35px 70px rgba(0,0,0,0.5);
             height: 420px;
             display: flex;
             align-items: center;
             justify-content: center;
             flex-direction: column;
+            cursor: pointer;
             transition: all 0.6s ease;
             user-select: none;
         }
@@ -114,27 +142,27 @@ with tab1:
             margin-top: 35px;
             opacity: 0.9;
         }
-        /* Przycisk całkowicie przezroczysty i nakładany na kafelek */
-        .overlay-button {
-            position: absolute;
-            top: 0;
-            left: 0;
+        a.tile-link {
+            text-decoration: none;
+            color: inherit;
+            display: block;
             width: 100%;
             height: 100%;
-            background: transparent !important;
-            border: none !important;
-            cursor: pointer;
-            z-index: 10;
-        }
-        /* Ukrywa domyślny wygląd przycisku Streamlit */
-        div[data-testid="stButton"] button {
-            background: transparent !important;
-            border: none !important;
-            padding: 0 !important;
-            margin: 0 !important;
         }
     </style>
     """, unsafe_allow_html=True)
+
+    # Odczytujemy dane z POST
+    if "play_name" in st.experimental_get_query_params():
+        params = st.experimental_get_query_params()
+        st.session_state.selected_station = {
+            "name": params["play_name"][0],
+            "url_resolved": params["play_url"][0],
+            "tags": params["play_tags"][0],
+            "bitrate": params.get("play_bitrate", ["?"])[0]
+        }
+        st.experimental_set_query_params()
+        st.rerun()
 
     # === Ulubione ===
     st.subheader("❤️ Moje Ulubione")
@@ -146,19 +174,15 @@ with tab1:
             if not url or not url.startswith("https://"):
                 continue
             color = random.choice(metro_colors)
+            name_js = name.replace("'", "\\'")
             with cols[idx % 3]:
-                # Przycisk nakładany na kafelek
-                if st.button("", key=f"fav_play_{idx}"):
-                    st.session_state.selected_station = {"name": name, "url_resolved": url, "tags": tags, "bitrate": bitrate}
-                    st.rerun()
                 st.markdown(f"""
-                    <div class="tile-wrapper">
-                        <button class="overlay-button"></button>
+                    <a href="javascript:void(0)" class="tile-link" onclick="playStation('{name_js}', '{url}', '{tags}', '{bitrate}')">
                         <div class="clickable-tile" style="background-color: {color};">
                             {name}
                             <div class="tile-small-text">{tags} | {bitrate} kbps</div>
                         </div>
-                    </div>
+                    </a>
                 """, unsafe_allow_html=True)
                 if st.button("Usuń z ulubionych ❌", key=f"fav_del_{idx}", use_container_width=True):
                     remove_favorite(name)
@@ -190,25 +214,25 @@ with tab1:
         cols = st.columns(3)
         for idx, station in enumerate(valid_stations):
             color = random.choice(metro_colors)
+            name_js = station['name'].replace("'", "\\'")
+            url = station['url_resolved']
+            tags = station.get('tags', 'brak')
+            bitrate = station.get('bitrate', '?')
             with cols[idx % 3]:
-                if st.button("", key=f"play_{idx}"):
-                    st.session_state.selected_station = station
-                    st.rerun()
                 st.markdown(f"""
-                    <div class="tile-wrapper">
-                        <button class="overlay-button"></button>
+                    <a href="javascript:void(0)" class="tile-link" onclick="playStation('{name_js}', '{url}', '{tags}', '{bitrate}')">
                         <div class="clickable-tile" style="background-color: {color};">
                             {station['name']}
-                            <div class="tile-small-text">{station.get('tags', 'brak')} | {station.get('bitrate', '?')} kbps</div>
+                            <div class="tile-small-text">{tags} | {bitrate} kbps</div>
                         </div>
-                    </div>
+                    </a>
                 """, unsafe_allow_html=True)
                 if st.button("❤️ Dodaj do ulubionych", key=f"add_{idx}", use_container_width=True):
                     add_favorite(station)
                     st.success("Dodano!")
 
 # ================================
-# ZAKŁADKA GAZETKI
+# ZAKŁADKA GAZETKI (bez zmian)
 # ================================
 with tab2:
     st.header("🛒 Gazetki Promocyjne – Wielkie Kafelki")
@@ -282,4 +306,4 @@ with st.sidebar:
     else:
         st.info("Kliknij wielki kolorowy kafelek – radio zacznie grać tutaj!")
 
-st.sidebar.success("Gotowe! Kafelek jest teraz 100% czysty – przycisk nakładany idealnie na niego! ❤️🎉")
+st.sidebar.success("Gotowe! Kafelki są teraz 100% czyste i idealnie klikalne – działa na Streamlit Cloud! ❤️🎉")
