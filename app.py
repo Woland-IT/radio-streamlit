@@ -35,7 +35,7 @@ def remove_favorite(name):
 
 # Pomocnicze
 def safe_url(url):
-    if any(x in url for x in ["localhost", "127.0.0.0"]):
+    if any(x in url for x in ["localhost", "127.0.0.1"]):
         return None
     parsed = urllib.parse.urlparse(url)
     if not parsed.scheme or not parsed.netloc:
@@ -59,7 +59,7 @@ metro_colors = [
     "#8E44AD", "#16A085", "#E67E22", "#C0392B", "#27AE60"
 ]
 
-# Fallback stacje (HTTPS – zawsze działają)
+# Fallback stacje (HTTPS)
 fallback_stations = [
     {"name": "RMF FM", "url_resolved": "https://rs101-krk.rmfstream.pl/rmf_fm", "tags": "pop, hity", "bitrate": 128},
     {"name": "VOX FM", "url_resolved": "https://ic2.smcdn.pl/3990-1.mp3", "tags": "hity, dance", "bitrate": 128},
@@ -81,23 +81,13 @@ with tab1:
     st.header("🇵🇱 Polskie Radio dla Seniora")
     st.markdown("### Kliknij cały wielki kolorowy kafelek – radio gra od razu po prawej! 🎶🔊")
 
-    # CSS – całkowicie ukrywa niewidzialny przycisk (zero miejsca, zero kwadracików)
+    # CSS – przycisk nakładany na kafelek
     st.markdown("""
     <style>
-        /* Całkowicie usuwa pusty przycisk z layoutu */
-        div[data-testid="stButton"] button[kind="secondary"] {
-            background: transparent !important;
-            border: none !important;
-            padding: 0 !important;
-            margin: 0 !important;
-            min-height: 0 !important;
-            height: 0 !important;
-            width: 100% !important;
-            visibility: hidden !important;
-            pointer-events: auto !important;
-            overflow: hidden !important;
+        .tile-wrapper {
+            position: relative;
+            margin: 40px 0;
         }
-        /* Wielkie kafelki */
         .clickable-tile {
             background-color: #0072C6;
             border-radius: 40px;
@@ -106,14 +96,12 @@ with tab1:
             font-size: 52px;
             font-weight: bold;
             color: white;
-            margin: 50px 0;
             box-shadow: 0 35px 70px rgba(0,0,0,0.5);
             height: 420px;
             display: flex;
             align-items: center;
             justify-content: center;
             flex-direction: column;
-            cursor: pointer;
             transition: all 0.6s ease;
             user-select: none;
         }
@@ -125,6 +113,25 @@ with tab1:
             font-size: 34px;
             margin-top: 35px;
             opacity: 0.9;
+        }
+        /* Przycisk całkowicie przezroczysty i nakładany na kafelek */
+        .overlay-button {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: transparent !important;
+            border: none !important;
+            cursor: pointer;
+            z-index: 10;
+        }
+        /* Ukrywa domyślny wygląd przycisku Streamlit */
+        div[data-testid="stButton"] button {
+            background: transparent !important;
+            border: none !important;
+            padding: 0 !important;
+            margin: 0 !important;
         }
     </style>
     """, unsafe_allow_html=True)
@@ -140,13 +147,17 @@ with tab1:
                 continue
             color = random.choice(metro_colors)
             with cols[idx % 3]:
-                if st.button("", key=f"fav_play_{idx}", use_container_width=True):
+                # Przycisk nakładany na kafelek
+                if st.button("", key=f"fav_play_{idx}"):
                     st.session_state.selected_station = {"name": name, "url_resolved": url, "tags": tags, "bitrate": bitrate}
                     st.rerun()
                 st.markdown(f"""
-                    <div class="clickable-tile" style="background-color: {color};">
-                        {name}
-                        <div class="tile-small-text">{tags} | {bitrate} kbps</div>
+                    <div class="tile-wrapper">
+                        <button class="overlay-button"></button>
+                        <div class="clickable-tile" style="background-color: {color};">
+                            {name}
+                            <div class="tile-small-text">{tags} | {bitrate} kbps</div>
+                        </div>
                     </div>
                 """, unsafe_allow_html=True)
                 if st.button("Usuń z ulubionych ❌", key=f"fav_del_{idx}", use_container_width=True):
@@ -173,20 +184,23 @@ with tab1:
                     valid_stations.append(s)
         st.success(f"Znaleziono {len(valid_stations)} stacji – kliknij kafelek!")
     except Exception as e:
-        st.warning(f"Brak połączenia z bazą: {e}. Zapasowe zawsze działają!")
+        st.warning(f"Brak połączenia: {e}. Zapasowe zawsze działają!")
 
     if valid_stations:
         cols = st.columns(3)
         for idx, station in enumerate(valid_stations):
             color = random.choice(metro_colors)
             with cols[idx % 3]:
-                if st.button("", key=f"play_{idx}", use_container_width=True):
+                if st.button("", key=f"play_{idx}"):
                     st.session_state.selected_station = station
                     st.rerun()
                 st.markdown(f"""
-                    <div class="clickable-tile" style="background-color: {color};">
-                        {station['name']}
-                        <div class="tile-small-text">{station.get('tags', 'brak')} | {station.get('bitrate', '?')} kbps</div>
+                    <div class="tile-wrapper">
+                        <button class="overlay-button"></button>
+                        <div class="clickable-tile" style="background-color: {color};">
+                            {station['name']}
+                            <div class="tile-small-text">{station.get('tags', 'brak')} | {station.get('bitrate', '?')} kbps</div>
+                        </div>
                     </div>
                 """, unsafe_allow_html=True)
                 if st.button("❤️ Dodaj do ulubionych", key=f"add_{idx}", use_container_width=True):
@@ -198,7 +212,7 @@ with tab1:
 # ================================
 with tab2:
     st.header("🛒 Gazetki Promocyjne – Wielkie Kafelki")
-    st.markdown("Kliknij kafelek sklepu → otwiera się oficjalna gazetka")
+    st.markdown("Kliknij kafelek sklepu → otwiera się gazetka")
 
     promotions = [
         {"name": "Biedronka", "image": "https://www.biedronka.pl/sites/default/files/styles/logo/public/logo-biedronka.png", "url": "https://www.biedronka.pl/gazetki", "color": "#D13438"},
@@ -268,4 +282,4 @@ with st.sidebar:
     else:
         st.info("Kliknij wielki kolorowy kafelek – radio zacznie grać tutaj!")
 
-st.sidebar.success("Gotowe! Kafelki czyste, wielkie i klikalne – działa stabilnie na Streamlit Cloud! ❤️🎉")
+st.sidebar.success("Gotowe! Kafelek jest teraz 100% czysty – przycisk nakładany idealnie na niego! ❤️🎉")
