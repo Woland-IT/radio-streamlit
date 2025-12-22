@@ -73,32 +73,47 @@ fallback_stations = [
 ]
 
 # ================================
-# OBSŁUGA KLIKNIĘCIA PRZEZ LINK (PARAMETRY URL)
-# ================================
-params = st.experimental_get_query_params()
-if "play" in params:
-    play_name = params["play"][0]
-    play_url = params["url"][0]
-    play_tags = params.get("tags", ["brak"])[0]
-    play_bitrate = params.get("bitrate", ["?"])[0]
-    st.session_state.selected_station = {
-        "name": play_name,
-        "url_resolved": play_url,
-        "tags": play_tags,
-        "bitrate": play_bitrate
-    }
-    # Czyścimy parametry, żeby nie zapętlić
-    st.experimental_set_query_params()
-    st.rerun()
-
-# ================================
 # ZAKŁADKI
 # ================================
 tab1, tab2 = st.tabs(["🎵 Radio Online", "🛒 Gazetki Promocyjne"])
 
 with tab1:
     st.header("🇵🇱 Polskie Radio dla Seniora")
-    st.markdown("### Kliknij cały wielki kolorowy kafelek – radio zaczyna grać po prawej! 🎶🔊")
+    st.markdown("### Kliknij cały wielki kolorowy kafelek – radio zaczyna grać od razu! 🎶🔊")
+
+    # JavaScript – zapobiega przeładowaniu i wysyła dane do Streamlit
+    st.markdown("""
+    <script>
+        function playStation(name, url, tags, bitrate) {
+            // Zapobiega domyślnemu przeładowaniu strony
+            event.preventDefault();
+            event.stopPropagation();
+            
+            // Tworzy ukryty formularz i submituje (Streamlit to odczyta)
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.style.display = 'none';
+            
+            const inputs = {
+                'play_name': name,
+                'play_url': url,
+                'play_tags': tags,
+                'play_bitrate': bitrate
+            };
+            
+            for (const key in inputs) {
+                const input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = key;
+                input.value = inputs[key];
+                form.appendChild(input);
+            }
+            
+            document.body.appendChild(form);
+            form.submit();
+        }
+    </script>
+    """, unsafe_allow_html=True)
 
     # Styl kafelków – czysty i piękny
     st.markdown("""
@@ -121,7 +136,6 @@ with tab1:
             flex-direction: column;
             cursor: pointer;
             transition: all 0.5s ease;
-            text-decoration: none;
             user-select: none;
         }
         .clickable-tile:hover {
@@ -136,9 +150,25 @@ with tab1:
         a.tile-link {
             text-decoration: none;
             color: inherit;
+            display: block;
+            width: 100%;
+            height: 100%;
         }
     </style>
     """, unsafe_allow_html=True)
+
+    # Odczytujemy dane z formularza POST (jeśli kliknięto kafelek)
+    if st.experimental_get_query_params().get("play_name"):
+        # W Streamlit POST przychodzi jako query params po rerunie
+        params = st.experimental_get_query_params()
+        st.session_state.selected_station = {
+            "name": params["play_name"][0],
+            "url_resolved": params["play_url"][0],
+            "tags": params["play_tags"][0],
+            "bitrate": params.get("play_bitrate", ["?"])[0]
+        }
+        st.experimental_set_query_params()  # czyścimy parametry
+        st.rerun()
 
     # === Ulubione ===
     st.subheader("❤️ Moje Ulubione")
@@ -150,10 +180,9 @@ with tab1:
             if not url or not url.startswith("https://"):
                 continue
             color = random.choice(metro_colors)
-            link = f"?play={urllib.parse.quote(name)}&url={urllib.parse.quote(url)}&tags={urllib.parse.quote(tags)}&bitrate={bitrate}"
             with cols[idx % 3]:
                 st.markdown(f"""
-                    <a href="{link}" class="tile-link">
+                    <a href="#" class="tile-link" onclick="playStation('{name.replace("'", "\\'")}', '{url}', '{tags}', '{bitrate}'); return false;">
                         <div class="clickable-tile" style="background-color: {color};">
                             {name}
                             <div class="tile-small-text">{tags} | {bitrate} kbps</div>
@@ -190,16 +219,15 @@ with tab1:
         cols = st.columns(3)
         for idx, station in enumerate(valid_stations):
             color = random.choice(metro_colors)
-            name = station['name']
+            name = station['name'].replace("'", "\\'")
             url = station['url_resolved']
             tags = station.get('tags', 'brak')
             bitrate = station.get('bitrate', '?')
-            link = f"?play={urllib.parse.quote(name)}&url={urllib.parse.quote(url)}&tags={urllib.parse.quote(tags)}&bitrate={bitrate}"
             with cols[idx % 3]:
                 st.markdown(f"""
-                    <a href="{link}" class="tile-link">
+                    <a href="#" class="tile-link" onclick="playStation('{name}', '{url}', '{tags}', '{bitrate}'); return false;">
                         <div class="clickable-tile" style="background-color: {color};">
-                            {name}
+                            {station['name']}
                             <div class="tile-small-text">{tags} | {bitrate} kbps</div>
                         </div>
                     </a>
@@ -209,7 +237,7 @@ with tab1:
                     st.success("Dodano!")
 
 # ================================
-# ZAKŁADKA GAZETKI
+# ZAKŁADKA GAZETKI (bez zmian)
 # ================================
 with tab2:
     st.header("🛒 Gazetki Promocyjne – Wielkie Kafelki")
@@ -303,10 +331,9 @@ with st.sidebar:
             st.success("✅ Już w ulubionych!")
 
         if st.button("🔇 Zatrzymaj radio", use_container_width=True):
-            if 'selected_station' in st.session_state:
-                del st.session_state.selected_station
+            del st.session_state.selected_station
             st.rerun()
     else:
         st.info("Kliknij wielki kolorowy kafelek – radio zacznie grać tutaj!")
 
-st.sidebar.success("Gotowe! Czyste kafelki z linkiem – klikasz gdziekolwiek i słuchasz! ❤️🎉")
+st.sidebar.success("Gotowe! Kliknięcie kafelka włącza radio od razu, bez nowej karty! ❤️🎉")
