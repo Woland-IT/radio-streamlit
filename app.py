@@ -181,4 +181,4 @@ with tab1:
 with st.sidebar:
     # Twój odtwarzacz bez zmian
 
-st.sidebar.success("Teraz kafelki są w 100% czyste i klikalne! ❤️")
+st.sidebar.success("Teraz kafelki są w 100% czyste i klikalne!")
