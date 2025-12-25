@@ -1,0 +1,62 @@
+[
+    {
+        "name": "Westwing",
+        "url": "https://www.westwing.pl/",
+        "color": "#C49A6C"
+    },
+    {
+        "name": "Selsey",
+        "url": "https://selsey.pl/",
+        "color": "#4A90E2"
+    },
+    {
+        "name": "DKwadrat",
+        "url": "https://dkwadrat.pl/",
+        "color": "#E74C3C"
+    },
+    {
+        "name": "Zona Design",
+        "url": "https://zona-design.pl/",
+        "color": "#27AE60"
+    },
+    {
+        "name": "Design Town",
+        "url": "https://designtown.pl/",
+        "color": "#9B59B6"
+    },
+    {
+        "name": "Homebook",
+        "url": "https://homebook.pl/",
+        "color": "#F39C12"
+    },
+    {
+        "name": "Zalando Lounge",
+        "url": "https://www.zalando-lounge.pl/",
+        "color": "#FF69B4"
+    },
+    {
+        "name": "Limango",
+        "url": "https://www.limango.pl/",
+        "color": "#E91E63"
+    },
+    {
+        "name": "Modivo",
+        "url": "https://modivo.pl/",
+        "color": "#3498DB"
+    },
+    {
+        "name": "Answear",
+        "url": "https://answear.com/",
+        "color": "#2ECC71"
+    },
+    {
+        "name": "Outley",
+        "url": "https://outley.pl/",
+        "color": "#34495E"
+    },
+    {
+        "name": "eButik",
+        "url": "https://ebutik.pl/",
+        "color": "#F1C40F"
+    }
+]

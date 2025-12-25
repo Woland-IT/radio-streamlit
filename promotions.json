@@ -1,0 +1,73 @@
+[
+    {
+        "name": "Biedronka",
+        "image": "https://www.biedronka.pl/sites/default/files/styles/logo/public/logo-biedronka.png",
+        "url": "https://www.biedronka.pl/gazetki",
+        "color": "#E60000"
+    },
+    {
+        "name": "Lidl",
+        "image": "https://www.lidl.pl/assets/pl/logo.svg",
+        "url": "https://www.lidl.pl/c/nasze-gazetki/s10008614",
+        "color": "#003399"
+    },
+    {
+        "name": "Kaufland",
+        "image": "https://sklep.kaufland.pl/assets/img/kaufland-logo.svg",
+        "url": "https://sklep.kaufland.pl/gazeta-reklamowa.html",
+        "color": "#ED1C24"
+    },
+    {
+        "name": "Dino",
+        "image": "https://marketdino.pl/themes/dino/assets/img/logo.svg",
+        "url": "https://marketdino.pl/gazetki-promocyjne",
+        "color": "#FFCC00"
+    },
+    {
+        "name": "Żabka",
+        "image": "https://www.zabka.pl/assets/images/logo-zabka.svg",
+        "url": "https://www.zabka.pl/promocje",
+        "color": "#00A650"
+    },
+    {
+        "name": "Carrefour",
+        "image": "https://www.carrefour.pl/themes/custom/carrefour/logo.svg",
+        "url": "https://www.carrefour.pl/gazetka-handlowa",
+        "color": "#004B93"
+    },
+    {
+        "name": "Auchan",
+        "image": "https://www.auchan.pl/themes/custom/auchan/logo.svg",
+        "url": "https://www.auchan.pl/pl/gazetka",
+        "color": "#ED1C24"
+    },
+    {
+        "name": "Leroy Merlin",
+        "image": "https://www.leroymerlin.pl/img/logo-lm.svg",
+        "url": "https://www.leroymerlin.pl/gazetka/",
+        "color": "#00A650"
+    },
+    {
+        "name": "Rossmann",
+        "image": "https://www.rossmann.pl/static/version1737555553/frontend/Rossmann/default/pl_PL/images/logo.svg",
+        "url": "https://www.rossmann.pl/promocje",
+        "color": "#E4007C"
+    },
+    {
+        "name": "Pepco",
+        "image": "https://pepco.pl/themes/pepco/assets/img/logo.svg",
+        "url": "https://pepco.pl/gazetka/",
+        "color": "#00AEEF"
+    },
+    {
+    "name": "Action",
+    "url": "https://www.action.com/pl/pl/gazetka",
+    "color": "#FF6600"
+    },
+    {
+        "name": "Media Expert",
+        "url": "https://www.mediaexpert.pl/promocje/gazetka",
+        "color": "#0033A0"
+    }
+
+]
