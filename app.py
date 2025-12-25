@@ -57,20 +57,50 @@ with tab1:
         st.header("🇵🇱 Polskie Radio dla Seniora")
         st.markdown("### Kliknij wielki kafelek – radio gra od razu po prawej! 🎶🔊")
 
+        # === ULUBIONE NA SAMYM GÓRZE ===
+        favorites = st.session_state.favorites
+        if favorites:
+            st.markdown("### ❤️ Moje Ulubione Stacje")
+            fav_cols = st.columns(3)
+            for idx, (name, url, tags, bitrate) in enumerate(favorites):
+                with fav_cols[idx % 3]:
+                    # Tworzymy tymczasowy dict stacji, żeby render_station_tile działało
+                    fav_station = {
+                        "name": name,
+                        "url_resolved": url,
+                        "tags": tags or "brak",
+                        "bitrate": bitrate or "?"
+                    }
+                    render_station_tile(fav_station, f"fav_{idx}")
+
+            st.markdown("---")  # separator
+
+        # === WYSZUKIWANIE I RESZTA STACJI ===
+        st.markdown("### Wszystkie stacje")
         query = st.text_input("🔍 Szukaj stacji (np. RMF, Eska, Trójka)", key="radio_search")
 
         try:
             stations = search_stations(query=query, country="Poland", limit=100)
-            st.success(f"Znaleziono {len(stations)} stacji")
+            if query:  # Jeśli coś wyszukano, pokaż tylko wyniki wyszukiwania
+                st.info(f"Znaleziono {len(stations)} stacji dla frazy: \"{query}\"")
         except:
             st.warning("Brak połączenia – ładuję listę zapasową")
             stations = fallback_stations
 
-        cols = st.columns(3)
-        for idx, station in enumerate(stations):
-            with cols[idx % 3]:
-                render_station_tile(station, idx)
+        # Usuwamy ulubione z ogólnej listy, żeby się nie dublowały
+        favorite_names = [fav[0].lower() for fav in favorites]
+        filtered_stations = [
+            s for s in stations
+            if s['name'].lower() not in favorite_names
+        ]
 
+        if not filtered_stations and not query:
+            st.info("Brak innych stacji – wszystkie Twoje ulubione są na górze! ❤️")
+        else:
+            cols = st.columns(3)
+            for idx, station in enumerate(filtered_stations):
+                with cols[idx % 3]:
+                    render_station_tile(station, idx)
     with col_player:
         st.header("🎵 Teraz gra...")
 
