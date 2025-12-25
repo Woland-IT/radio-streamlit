@@ -3,7 +3,7 @@ import hashlib
 import streamlit as st
 
 
-@st.experimental_singleton
+@st.cache_resource
 def get_conn(db_path: str = 'favorites.db'):
     conn = sqlite3.connect(db_path, check_same_thread=False)
     conn.execute('''CREATE TABLE IF NOT EXISTS favorites
