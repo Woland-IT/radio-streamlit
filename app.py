@@ -1,244 +1,141 @@
+# app.py
+
 import streamlit as st
 import random
-import urllib.parse
 
 from db import get_favorites, add_favorite, remove_favorite
-from utils import safe_url, get_audio_format, metro_colors, fallback_stations, search_stations, check_url_accessible
-from ui import clickable_tile_html, promotion_tile_html
+from utils import (
+    metro_colors, fallback_stations, search_stations,
+    get_real_stream_url, station_overrides, get_audio_format
+)
 from components.tiles import render_station_tile
 from streamlit_player import st_player
 
 # ================================
-# KONFIGURACJA
+# KONFIGURACJA STRONY
 # ================================
 st.set_page_config(page_title="Radio + Gazetki dla Seniora", layout="wide")
 
-# CSS dla małych przycisków ulubionych
-st.markdown("""
-<style>
-.favorite-button .stButton button {
-    font-size: 12px;
-    padding: 4px 8px;
-    background-color: #e0e0e0;
-    border: 1px solid #bbb;
-    border-radius: 4px;
-    color: #333;
-}
-.favorite-button .stButton button:hover {
-    background-color: #d0d0d0;
-}
-.radio-tile .stButton button {
-    background-color: #0072C6;
-    border-radius: 40px;
-    padding: 100px 20px;
-    text-align: center;
-    font-size: 50px;
-    font-weight: bold;
-    color: white;
-    margin: 40px 0;
-    box-shadow: 0 30px 60px rgba(0,0,0,0.5);
-    height: 400px;
-    width: 100%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-direction: column;
-    cursor: pointer;
-    transition: all 0.5s ease;
-    user-select: none;
-    border: none;
-    outline: none;
-}
-.radio-tile .stButton button:hover {
-    transform: translateY(-40px) scale(1.12);
-    box-shadow: 0 80px 140px rgba(0,0,0,0.6);
-}
-.radio-tile .stButton button p {
-    font-size: 34px;
-    margin-top: 30px;
-    opacity: 0.9;
-}
-</style>
-""", unsafe_allow_html=True)
-
-# (helpers and constants moved to utils.py)
-
-# ================================
-# ZAKŁADKI
-# ================================
-tab1, tab2 = st.tabs(["🎵 Radio Online", "🛒 Gazetki Promocyjne"])
-
-# Inicjalizacja ulubionych w session_state
+# Inicjalizacja stanu sesji
 if 'favorites' not in st.session_state:
     st.session_state.favorites = get_favorites()
+if 'selected_station' not in st.session_state:
+    st.session_state.selected_station = None
 
-with tab1:
+# ================================
+# GŁÓWNY LAYOUT: Kolumny – radio | odtwarzacz
+# ================================
+main_col, player_col = st.columns([3, 1])
+
+with main_col:
     st.header("🇵🇱 Polskie Radio dla Seniora")
-    st.markdown("### Kliknij cały wielki kolorowy kafelek – radio gra od razu po prawej! 🎶🔊")
+    st.markdown("### Kliknij wielki kolorowy kafelek – radio od razu gra po prawej! 🎶🔊")
 
-    # Styl kafelków – czysty i piękny
-    st.markdown("""
-    <style>
-        .clickable-tile {
-            background-color: #0072C6;
-            border-radius: 40px;
-            padding: 100px 20px;
-            text-align: center;
-            font-size: 50px;
-            font-weight: bold;
-            color: white;
-            margin: 40px 0;
-            box-shadow: 0 30px 60px rgba(0,0,0,0.5);
-            height: 400px;
-            width: 100%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            flex-direction: column;
-            cursor: pointer;
-            transition: all 0.5s ease;
-            user-select: none;
-        }
-        .clickable-tile:hover {
-            transform: translateY(-40px) scale(1.12);
-            box-shadow: 0 80px 140px rgba(0,0,0,0.6);
-        }
-        .tile-small-text {
-            font-size: 34px;
-            margin-top: 30px;
-            opacity: 0.9;
-        }
-        a.tile-link {
-            text-decoration: none;
-            color: inherit;
-            display: block;
-            width: 100%;
-            height: 100%;
-        }
-    </style>
-    """, unsafe_allow_html=True)
+    # Wyszukiwanie stacji
+    query = st.text_input("🔍 Szukaj stacji (np. RMF, Eska, Trójka)", "")
 
-    # === Ulubione ===
-    st.subheader("❤️ Moje Ulubione")
-    favorites = st.session_state.favorites
-    if favorites:
-        cols = st.columns(3)
-        for idx, row in enumerate(favorites):
-            name, url, tags, bitrate = row[0], safe_url(row[1]), row[2] if len(row)>2 else "brak", row[3] if len(row)>3 else 128
-            if not url or not url.startswith("https://"):
-                continue
-            color = random.choice(metro_colors)
-            station = {"name": name, "url_resolved": url, "tags": tags, "bitrate": bitrate}
-            with cols[idx % 3]:
-                render_station_tile(station, f"fav_{idx}")
-    else:
-        st.info("Brak ulubionych – kliknij ❤️ pod kafelkiem poniżej!")
-
-    # === Wszystkie stacje ===
-    st.subheader("🔍 Wszystkie działające stacje")
-    query = st.text_input("Szukaj (np. RMF, Trójka):", key="search")
-
-    valid_stations = fallback_stations[:]
+    # Pobieranie stacji
     try:
-        stations = search_stations(query)
-        station_dict = {}
-        for station in stations:
-            url = safe_url(station.get('url_resolved', ''))
-            if url and url.startswith("https://"):
-                s = station.copy()
-                s['url_resolved'] = url
-                name = s['name']
-                if name not in station_dict:
-                    station_dict[name] = s
-        valid_stations.extend(station_dict.values())
-        st.success(f"Znaleziono {len(valid_stations)} stacji – kliknij kafelek!")
+        stations = search_stations(query=query, country="Poland", limit=100)
+        st.success(f"Znaleziono {len(stations)} stacji online")
     except Exception as e:
-        st.warning(f"Brak połączenia: {e}. Zapasowe zawsze działają!")
+        st.warning("Brak połączenia z API – ładuję listę zapasową (zawsze działa!)")
+        stations = fallback_stations
 
-    if valid_stations:
-        cols = st.columns(3)
-        favorites = st.session_state.favorites
-        for idx, station in enumerate(valid_stations):
-            color = random.choice(metro_colors)
-            bitrate = station.get('bitrate', '?')
-            with cols[idx % 3]:
-                render_station_tile(station, idx)
-
-# ================================
-# ZAKŁADKA GAZETKI
-# ================================
-with tab2:
-    st.header("🛒 Gazetki Promocyjne – Wielkie Kafelki")
-    st.markdown("Kliknij kafelek sklepu → otwiera się gazetka")
-
-    promotions = [
-        {"name": "Biedronka", "image": "https://www.biedronka.pl/sites/default/files/styles/logo/public/logo-biedronka.png", "url": "https://www.biedronka.pl/gazetki", "color": "#D13438"},
-        {"name": "Lidl", "image": "https://www.lidl.pl/assets/pl/logo.svg", "url": "https://www.lidl.pl/c/nasze-gazetki/s10008614", "color": "#0072C6"},
-        {"name": "Kaufland", "image": "https://sklep.kaufland.pl/assets/img/kaufland-logo.svg", "url": "https://sklep.kaufland.pl/gazeta-reklamowa.html", "color": "#E51400"},
-        {"name": "Dino", "image": "https://marketdino.pl/themes/dino/assets/img/logo.svg", "url": "https://marketdino.pl/gazetki-promocyjne", "color": "#F09609"},
-        {"name": "Carrefour", "image": "https://www.carrefour.pl/themes/custom/carrefour/logo.svg", "url": "https://www.carrefour.pl/gazetka-handlowa", "color": "#00A300"},
-        {"name": "Leroy Merlin", "image": "https://www.leroymerlin.pl/img/logo-lm.svg", "url": "https://www.leroymerlin.pl/gazetka/", "color": "#FFC40D"},
-        {"name": "Bricomarché", "image": "https://www.bricomarche.pl/themes/custom/bricomarche/logo.png", "url": "https://www.bricomarche.pl/gazetka", "color": "#A200FF"},
-        {"name": "Empik", "image": "https://www.empik.com/static/img/empik-logo.svg", "url": "https://www.empik.com/promocje", "color": "#00ABA9"},
-    ]
-
+    # Siatka 3 kolumny z kafelkami
     cols = st.columns(3)
-    for idx, promo in enumerate(promotions):
+    for idx, station in enumerate(stations):
         with cols[idx % 3]:
-            html = promotion_tile_html(promo)
-            st.markdown(html, unsafe_allow_html=True)
+            render_station_tile(station, idx)
 
-# ================================
-# SIDEBAR – ODTWARZACZ
-# ================================
-with st.sidebar:
+    # Sekcja promocji / gazetek (opcjonalnie możesz dodać tu render_promo_tile)
+    st.markdown("---")
+    st.subheader("🛒 Gazetki promocyjne")
+    st.info("Wkrótce dodamy ładne kafelki z gazetkami Biedronka, Lidl, Dino itp. 😊")
+
+with player_col:
+    # ================================
+    # SIDEBAR / PRAWY PANEL – ODTWARZACZ
+    # ================================
     st.header("🎵 Teraz gra...")
-    if 'selected_station' in st.session_state:
-        selected = st.session_state.selected_station
-        url = selected['url_resolved']
-        
-        st.markdown(f"### **{selected['name']}** 🔊🎶")
-        st.markdown(f"**Tagi:** {selected.get('tags', 'brak')} • **Bitrate:** {selected.get('bitrate', '?')} kbps")
-        
-        print(f"SIDEBAR: Rozpoczynam ładowanie radia: {selected['name']}, URL: {url}")
-        
-        # Użyj natywnego HTML5 audio playera (bardziej niezawodny)
-        audio_type = get_audio_format(url)
-        print(f"SIDEBAR: Używam HTML5 <audio> z type={audio_type} dla {url}")
-        
-        try:
-            st.components.v1.html(f"""
-                <audio id="radioPlayer" controls autoplay style="width:100%; height: 60px;">
-                    <source src="{url}" type="{audio_type}">
-                    Twoja przeglądarka nie obsługuje odtwarzania audio.
-                </audio>
-                <script>
-                    var audio = document.getElementById('radioPlayer');
-                    audio.volume = 0.7;
-                    audio.play().catch(function(error) {{
-                        console.log('Autoplay zablokowany, użytkownik musi kliknąć PLAY:', error);
-                    }});
-                </script>
-            """, height=100)
-            print(f"SIDEBAR: HTML5 audio załadowany dla {selected['name']}")
-        except Exception as e:
-            print(f"SIDEBAR: Błąd HTML5 audio: {e}")
-            st.error(f"Nie udało się odtworzyć radia: {e}")
-        
-        st.markdown("""
-        <div style="background-color: #e6f7ff; padding: 50px; border-radius: 30px; text-align: center; font-size: 32px; margin: 40px 0;">
-            🔊 <strong>Nie słychać?</strong><br>
-            Naciśnij ▶️ PLAY wyżej!<br>
-            Sprawdź głośność telefonu/komputera.
-        </div>
-        """, unsafe_allow_html=True)
 
-        if selected['name'] not in [f[0] for f in get_favorites()]:
+    if st.session_state.selected_station:
+        selected = st.session_state.selected_station
+        original_url = selected.get('url_resolved') or selected.get('url', '')
+
+        st.markdown(f"### **{selected['name']}** 🔊")
+        st.caption(f"{selected.get('tags', 'brak')} • {selected.get('bitrate', '?')} kbps")
+
+        # Zbieranie najlepszych URL-i do odtwarzania
+        candidates = []
+
+        # 1. Ręczne poprawki dla problematycznych stacji
+        name_lower = selected['name'].lower()
+        for key, urls in station_overrides.items():
+            if key in name_lower:
+                candidates.extend(urls)
+
+        # 2. Automatyczne wykrywanie alternatyw
+        real_urls = get_real_stream_url(selected['name'], original_url)
+        for u in real_urls:
+            if u not in candidates:
+                candidates.append(u)
+
+        # 3. Oryginalny URL na końcu
+        if original_url and original_url not in candidates:
+            candidates.append(original_url)
+
+        # Wybierz pierwszy działający (lub pierwszy z listy)
+        play_url = candidates[0] if candidates else original_url
+        audio_type = get_audio_format(play_url)
+
+        # Obsługa HLS (głównie Polskie Radio)
+        if play_url.endswith('.m3u8') or 'playlist.m3u8' in play_url:
+            try:
+                st_player(play_url, playing=True, height=100)
+                st.success("HLS stream załadowany")
+            except:
+                st.error("Błąd HLS – spróbuj innej stacji")
+        else:
+            # Standardowy HTML5 audio z debugiem i CORS
+            cors_attr = 'crossOrigin="anonymous"' if "redcdn" in play_url.lower() else ""
+
+            audio_html = f"""
+            <audio controls autoplay style="width:100%; height:60px;" {cors_attr}>
+                <source src="{play_url}" type="{audio_type}">
+                Twoja przeglądarka nie obsługuje audio.
+            </audio>
+            <script>
+                const audio = document.querySelector('audio');
+                audio.volume = 0.8;
+                audio.play().catch(e => console.error("Autoplay error:", e));
+            </script>
+            """
+            st.components.v1.html(audio_html, height=120)
+
+        # Przycisk zatrzymania
+        if st.button("🔇 Zatrzymaj odtwarzanie", use_container_width=True):
+            st.session_state.selected_station = None
+            st.rerun()
+
+        # Ulubione w odtwarzaczu
+        if any(fav[0] == selected['name'] for fav in st.session_state.favorites):
+            st.success("❤️ Już w ulubionych")
+        else:
             if st.button("❤️ Dodaj do ulubionych", use_container_width=True):
                 add_favorite(selected)
+                st.session_state.favorites = get_favorites()
                 st.rerun()
-        else:
-            st.success("✅ Już w ulubionych!")
 
-        if st.button("🔇 Zatrzymaj radio", use_container_width=True):
-            print(f"SIDEBAR: Zatrzymuję radio {selected['name']}")
+        st.markdown("---")
+        st.markdown("**Nie słychać?** Naciśnij ▶️ PLAY i sprawdź głośność urządzenia 🔊")
+
+    else:
+        st.info("Wybierz stację z lewej strony 👈")
+        st.markdown("### 🎄 Wesołych Świąt! 🎁")
+
+# ================================
+# STOPKA
+# ================================
+st.markdown("---")
+st.caption("Aplikacja działa offline dzięki zapasowej liście stacji. Made with ❤️ dla Seniorów")
