@@ -7,7 +7,7 @@ import streamlit as st
 def get_conn(db_path: str = 'favorites.db'):
     conn = sqlite3.connect(db_path, check_same_thread=False)
     conn.execute('''CREATE TABLE IF NOT EXISTS favorites
-                 (id TEXT PRIMARY KEY, name TEXT, url TEXT, tags TEXT, bitrate INTEGER)''')
+                 (name TEXT PRIMARY KEY, url TEXT, tags TEXT, bitrate INTEGER)''')
     conn.commit()
     return conn
 
@@ -21,22 +21,25 @@ def get_favorites():
     c = get_conn().cursor()
     c.execute("SELECT * FROM favorites")
     rows = c.fetchall()
-    return [(r[1], r[2], r[3], r[4]) for r in rows]
+    print(f"DB: Pobrano {len(rows)} ulubionych z bazy")
+    return [(r[0], r[1], r[2], r[3]) for r in rows]
 
 
 def add_favorite(station: dict) -> bool:
     try:
         url = station.get('url_resolved') or station.get('url') or ''
-        idv = hashlib.sha256(url.encode('utf-8')).hexdigest()
         name = station.get('name')
         tags = station.get('tags', 'brak')
         bitrate = int(station.get('bitrate', 0) or 0)
+        print(f"DB: Dodaję do bazy: name={name}, url={url}")
         c = get_conn().cursor()
-        c.execute("INSERT OR REPLACE INTO favorites VALUES (?, ?, ?, ?, ?)",
-                  (idv, name, url, tags, bitrate))
+        c.execute("INSERT OR REPLACE INTO favorites VALUES (?, ?, ?, ?)",
+                  (name, url, tags, bitrate))
         get_conn().commit()
+        print(f"DB: Dodano pomyślnie, commit wykonany")
         return True
-    except sqlite3.Error:
+    except sqlite3.Error as e:
+        print(f"DB ERROR: {e}")
         return False
 
 

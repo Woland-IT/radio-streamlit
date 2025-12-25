@@ -5,32 +5,72 @@ import urllib.parse
 from db import get_favorites, add_favorite, remove_favorite
 from utils import safe_url, get_audio_format, metro_colors, fallback_stations, search_stations
 from ui import clickable_tile_html, promotion_tile_html
+from components.tiles import render_station_tile
+from streamlit_player import st_player
 
 # ================================
 # KONFIGURACJA
 # ================================
 st.set_page_config(page_title="Radio + Gazetki dla Seniora", layout="wide")
-# (helpers and constants moved to utils.py)
 
-# ================================
-# ODCZYT PARAMETRÓW Z URL (DLA KLIKNIĘCIA)
-# ================================
-params = st.experimental_get_query_params()
-if "play" in params:
-    st.session_state.selected_station = {
-        "name": params["play"][0],
-        "url_resolved": params["url"][0],
-        "tags": params["tags"][0],
-        "bitrate": params["bitrate"][0]
-    }
-    # Czyścimy parametry, żeby nie zapętlić
-    st.experimental_set_query_params()
-    st.rerun()
+# CSS dla małych przycisków ulubionych
+st.markdown("""
+<style>
+.favorite-button .stButton button {
+    font-size: 12px;
+    padding: 4px 8px;
+    background-color: #e0e0e0;
+    border: 1px solid #bbb;
+    border-radius: 4px;
+    color: #333;
+}
+.favorite-button .stButton button:hover {
+    background-color: #d0d0d0;
+}
+.radio-tile .stButton button {
+    background-color: #0072C6;
+    border-radius: 40px;
+    padding: 100px 20px;
+    text-align: center;
+    font-size: 50px;
+    font-weight: bold;
+    color: white;
+    margin: 40px 0;
+    box-shadow: 0 30px 60px rgba(0,0,0,0.5);
+    height: 400px;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    cursor: pointer;
+    transition: all 0.5s ease;
+    user-select: none;
+    border: none;
+    outline: none;
+}
+.radio-tile .stButton button:hover {
+    transform: translateY(-40px) scale(1.12);
+    box-shadow: 0 80px 140px rgba(0,0,0,0.6);
+}
+.radio-tile .stButton button p {
+    font-size: 34px;
+    margin-top: 30px;
+    opacity: 0.9;
+}
+</style>
+""", unsafe_allow_html=True)
+
+# (helpers and constants moved to utils.py)
 
 # ================================
 # ZAKŁADKI
 # ================================
 tab1, tab2 = st.tabs(["🎵 Radio Online", "🛒 Gazetki Promocyjne"])
+
+# Inicjalizacja ulubionych w session_state
+if 'favorites' not in st.session_state:
+    st.session_state.favorites = get_favorites()
 
 with tab1:
     st.header("🇵🇱 Polskie Radio dla Seniora")
@@ -80,7 +120,7 @@ with tab1:
 
     # === Ulubione ===
     st.subheader("❤️ Moje Ulubione")
-    favorites = get_favorites()
+    favorites = st.session_state.favorites
     if favorites:
         cols = st.columns(3)
         for idx, row in enumerate(favorites):
@@ -88,21 +128,9 @@ with tab1:
             if not url or not url.startswith("https://"):
                 continue
             color = random.choice(metro_colors)
-            encoded_name = urllib.parse.quote(name)
-            encoded_url = urllib.parse.quote(url)
-            encoded_tags = urllib.parse.quote(tags)
+            station = {"name": name, "url_resolved": url, "tags": tags, "bitrate": bitrate}
             with cols[idx % 3]:
-                st.markdown(f"""
-                    <a href="?play={encoded_name}&url={encoded_url}&tags={encoded_tags}&bitrate={bitrate}" target="_self" class="tile-link">
-                        <div class="clickable-tile" style="background-color: {color};">
-                            {name}
-                            <div class="tile-small-text">{tags} | {bitrate} kbps</div>
-                        </div>
-                    </a>
-                """, unsafe_allow_html=True)
-                if st.button("Usuń z ulubionych ❌", key=f"fav_del_{idx}", use_container_width=True):
-                    remove_favorite(name)
-                    st.rerun()
+                render_station_tile(station, f"fav_{idx}")
     else:
         st.info("Brak ulubionych – kliknij ❤️ pod kafelkiem poniżej!")
 
@@ -113,28 +141,28 @@ with tab1:
     valid_stations = fallback_stations[:]
     try:
         stations = search_stations(query)
+        station_dict = {}
         for station in stations:
             url = safe_url(station.get('url_resolved', ''))
             if url and url.startswith("https://"):
                 s = station.copy()
                 s['url_resolved'] = url
-                if s not in valid_stations:
-                    valid_stations.append(s)
+                name = s['name']
+                if name not in station_dict:
+                    station_dict[name] = s
+        valid_stations.extend(station_dict.values())
         st.success(f"Znaleziono {len(valid_stations)} stacji – kliknij kafelek!")
     except Exception as e:
         st.warning(f"Brak połączenia: {e}. Zapasowe zawsze działają!")
 
     if valid_stations:
         cols = st.columns(3)
+        favorites = st.session_state.favorites
         for idx, station in enumerate(valid_stations):
             color = random.choice(metro_colors)
             bitrate = station.get('bitrate', '?')
             with cols[idx % 3]:
-                html = clickable_tile_html(station['name'], color, station.get('tags', 'brak'), bitrate, station['url_resolved'])
-                st.markdown(html, unsafe_allow_html=True)
-                if st.button("❤️ Dodaj do ulubionych", key=f"add_{idx}", use_container_width=True):
-                    add_favorite(station)
-                    st.success("Dodano!")
+                render_station_tile(station, idx)
 
 # ================================
 # ZAKŁADKA GAZETKI
@@ -168,18 +196,32 @@ with st.sidebar:
     if 'selected_station' in st.session_state:
         selected = st.session_state.selected_station
         url = selected['url_resolved']
-        audio_type = get_audio_format(url)
-
+        
         st.markdown(f"### **{selected['name']}** 🔊🎶")
         st.markdown(f"**Tagi:** {selected.get('tags', 'brak')} • **Bitrate:** {selected.get('bitrate', '?')} kbps")
-
-        st.components.v1.html(f"""
-            <audio controls autoplay style="width:100%;">
-                <source src="{url}" type="{audio_type}">
-                Twoja przeglądarka nie obsługuje audio.
-            </audio>
-        """, height=100)
-
+        
+        print(f"SIDEBAR: Rozpoczynam ładowanie radia: {selected['name']}, URL: {url}")
+        
+        # Wybór formatu audio
+        format_option = st.selectbox("Wybierz format audio:", ["Automatycznie", "MP3", "AAC", "HLS"], key="audio_format")
+        
+        try:
+            print(f"SIDEBAR: Próbuję st_player dla URL: {url}")
+            st_player(url, playing=True, height=100)
+            print(f"SIDEBAR: st_player załadowany pomyślnie dla {selected['name']}")
+        except Exception as e:
+            print(f"SIDEBAR: Błąd st_player: {e}, używam fallback <audio>")
+            st.warning(f"Player HLS nie działa: {e}. Próbuję standardowy audio.")
+            audio_type = "audio/mpeg" if format_option == "MP3" else "audio/aac" if format_option == "AAC" else get_audio_format(url)
+            print(f"SIDEBAR: Używam <audio> z type={audio_type}")
+            st.components.v1.html(f"""
+                <audio controls autoplay style="width:100%;">
+                    <source src="{url}" type="{audio_type}">
+                    Twoja przeglądarka nie obsługuje audio.
+                </audio>
+            """, height=100)
+            print(f"SIDEBAR: <audio> załadowany dla {selected['name']}")
+        
         st.markdown("""
         <div style="background-color: #e6f7ff; padding: 50px; border-radius: 30px; text-align: center; font-size: 32px; margin: 40px 0;">
             🔊 <strong>Nie słychać?</strong><br>
@@ -196,10 +238,4 @@ with st.sidebar:
             st.success("✅ Już w ulubionych!")
 
         if st.button("🔇 Zatrzymaj radio", use_container_width=True):
-            if 'selected_station' in st.session_state:
-                del st.session_state.selected_station
-            st.rerun()
-    else:
-        st.info("Kliknij wielki kolorowy kafelek – radio zacznie grać tutaj!")
-
-st.sidebar.success("Gotowe! Kafelki czyste, wielki i klikalne – działa na Streamlit Cloud! ❤️🎉")
+            print(f"SIDEBAR: Zatrzymuję radio {selected['name']}")
