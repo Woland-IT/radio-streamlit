@@ -1,6 +1,31 @@
+import requests
 import urllib.parse
 import streamlit as st
 from pyradios import RadioBrowser
+
+def check_url_accessible(url: str, timeout: int = 5) -> bool:
+    print(f"CHECK: Sprawdzam dostępność URL: {url}")
+    try:
+        response = requests.head(url, timeout=timeout, allow_redirects=True)
+        if response.status_code == 200:
+            print(f"CHECK: URL dostępny (HEAD): {url}")
+            return True
+        else:
+            print(f"CHECK: URL niedostępny (HEAD status {response.status_code}): {url}")
+            return False
+    except requests.RequestException as e:
+        print(f"CHECK: HEAD nie działa dla {url}, błąd: {e}, próbuję GET...")
+        try:
+            response = requests.get(url, timeout=timeout, stream=True, headers={'Range': 'bytes=0-1023'})
+            if response.status_code in (200, 206):
+                print(f"CHECK: URL dostępny (GET): {url}")
+                return True
+            else:
+                print(f"CHECK: URL niedostępny (GET status {response.status_code}): {url}")
+                return False
+        except requests.RequestException as e2:
+            print(f"CHECK: GET też nie działa dla {url}, błąd: {e2}")
+            return False
 
 
 def safe_url(url: str):
@@ -17,14 +42,21 @@ def safe_url(url: str):
 
 
 def get_audio_format(url: str):
-    if '.m3u8' in url:
+    url_lower = url.lower()
+    if any(ext in url_lower for ext in ['.m3u8', '.m3u']):
         return "application/x-mpegURL"
-    elif '.mp3' in url:
+    elif any(ext in url_lower for ext in ['.mp3', '.mpga']):
         return "audio/mpeg"
-    elif any(ext in url for ext in ['.aac', '.aacp', '.livx']):
+    elif any(ext in url_lower for ext in ['.aac', '.aacp', '.livx', '.adts']):
         return "audio/aac"
+    elif any(ext in url_lower for ext in ['.ogg', '.oga']):
+        return "audio/ogg"
+    elif any(ext in url_lower for ext in ['.wav']):
+        return "audio/wav"
+    elif any(ext in url_lower for ext in ['.pls']):
+        return "audio/x-scpls"
     else:
-        return "audio/mpeg"
+        return "audio/mpeg"  # domyślnie MP3
 
 
 metro_colors = [

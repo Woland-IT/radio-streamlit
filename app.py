@@ -3,7 +3,7 @@ import random
 import urllib.parse
 
 from db import get_favorites, add_favorite, remove_favorite
-from utils import safe_url, get_audio_format, metro_colors, fallback_stations, search_stations
+from utils import safe_url, get_audio_format, metro_colors, fallback_stations, search_stations, check_url_accessible
 from ui import clickable_tile_html, promotion_tile_html
 from components.tiles import render_station_tile
 from streamlit_player import st_player
@@ -202,25 +202,28 @@ with st.sidebar:
         
         print(f"SIDEBAR: Rozpoczynam ładowanie radia: {selected['name']}, URL: {url}")
         
-        # Wybór formatu audio
-        format_option = st.selectbox("Wybierz format audio:", ["Automatycznie", "MP3", "AAC", "HLS"], key="audio_format")
+        # Użyj natywnego HTML5 audio playera (bardziej niezawodny)
+        audio_type = get_audio_format(url)
+        print(f"SIDEBAR: Używam HTML5 <audio> z type={audio_type} dla {url}")
         
         try:
-            print(f"SIDEBAR: Próbuję st_player dla URL: {url}")
-            st_player(url, playing=True, height=100)
-            print(f"SIDEBAR: st_player załadowany pomyślnie dla {selected['name']}")
-        except Exception as e:
-            print(f"SIDEBAR: Błąd st_player: {e}, używam fallback <audio>")
-            st.warning(f"Player HLS nie działa: {e}. Próbuję standardowy audio.")
-            audio_type = "audio/mpeg" if format_option == "MP3" else "audio/aac" if format_option == "AAC" else get_audio_format(url)
-            print(f"SIDEBAR: Używam <audio> z type={audio_type}")
             st.components.v1.html(f"""
-                <audio controls autoplay style="width:100%;">
+                <audio id="radioPlayer" controls autoplay style="width:100%; height: 60px;">
                     <source src="{url}" type="{audio_type}">
-                    Twoja przeglądarka nie obsługuje audio.
+                    Twoja przeglądarka nie obsługuje odtwarzania audio.
                 </audio>
+                <script>
+                    var audio = document.getElementById('radioPlayer');
+                    audio.volume = 0.7;
+                    audio.play().catch(function(error) {{
+                        console.log('Autoplay zablokowany, użytkownik musi kliknąć PLAY:', error);
+                    }});
+                </script>
             """, height=100)
-            print(f"SIDEBAR: <audio> załadowany dla {selected['name']}")
+            print(f"SIDEBAR: HTML5 audio załadowany dla {selected['name']}")
+        except Exception as e:
+            print(f"SIDEBAR: Błąd HTML5 audio: {e}")
+            st.error(f"Nie udało się odtworzyć radia: {e}")
         
         st.markdown("""
         <div style="background-color: #e6f7ff; padding: 50px; border-radius: 30px; text-align: center; font-size: 32px; margin: 40px 0;">
