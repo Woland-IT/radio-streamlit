@@ -54,7 +54,7 @@ with tab1:
     col_radio, col_player = st.columns([3, 1])
 
     with col_radio:
-        st.header("🇵🇱 Polskie Radio dla Seniora")
+        st.header("🇵🇱 Radio do kuchni")
         st.markdown("### Kliknij wielki kafelek – radio gra od razu po prawej! 🎶🔊")
 
         # === ULUBIONE NA SAMYM GÓRZE ===
