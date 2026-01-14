@@ -51,11 +51,11 @@ tab1, tab2, tab3 = st.tabs(["🎵 Radio Online", "🛒 Gazetki i Sklepy", "🏡 
 # ZAKŁADKA 1: RADIO
 # ==================================================================
 with tab1:
-    col_radio, col_player = st.columns([3, 1])
-
-    with col_radio:
+    # Usunięto kolumny, teraz player w footerze
+    with st.container():
         st.header("🇵🇱 Radio do kuchni")
-        st.markdown("### Kliknij wielki kafelek – radio gra od razu po prawej! 🎶🔊")
+        st.markdown("### Kliknij wielki kafelek – radio gra od razu na dole! 🎶🔊")
+        st.info("Player jest teraz zawsze na dole ekranu! 👇 Wybierz stację, a zacznie grać.")
 
         # === ULUBIONE NA SAMYM GÓRZE ===
         favorites = st.session_state.favorites
@@ -101,63 +101,7 @@ with tab1:
             for idx, station in enumerate(filtered_stations):
                 with cols[idx % 3]:
                     render_station_tile(station, idx)
-    with col_player:
-        st.header("🎵 Teraz gra...")
 
-        if st.session_state.selected_station:
-            selected = st.session_state.selected_station
-            original_url = selected.get('url_resolved') or selected.get('url', '')
-
-            st.markdown(f"### **{selected['name']}** 🔊")
-            st.caption(f"{selected.get('tags', 'brak')} • {selected.get('bitrate', '?')} kbps")
-
-            candidates = []
-            name_lower = selected['name'].lower()
-            for key, urls in station_overrides.items():
-                if key in name_lower:
-                    candidates.extend(urls)
-            real_urls = get_real_stream_url(selected['name'], original_url)
-            for u in real_urls:
-                if u not in candidates:
-                    candidates.append(u)
-            if original_url and original_url not in candidates:
-                candidates.append(original_url)
-
-            play_url = candidates[0] if candidates else original_url
-            audio_type = get_audio_format(play_url)
-
-            if play_url.endswith('.m3u8') or 'playlist.m3u8' in play_url:
-                try:
-                    st_player(play_url, playing=True, height=100)
-                except:
-                    st.error("Błąd HLS")
-            else:
-                cors_attr = 'crossOrigin="anonymous"' if "redcdn" in play_url.lower() else ""
-                audio_html = f"""
-                <audio controls autoplay style="width:100%; height:60px;" {cors_attr}>
-                    <source src="{play_url}" type="{audio_type}">
-                </audio>
-                <script>document.querySelector('audio').volume = 0.8;</script>
-                """
-                st.components.v1.html(audio_html, height=120)
-
-            if st.button("🔇 Zatrzymaj", use_container_width=True):
-                st.session_state.selected_station = None
-                st.rerun()
-
-            if any(fav[0] == selected['name'] for fav in st.session_state.favorites):
-                st.success("❤️ W ulubionych")
-            else:
-                if st.button("❤️ Dodaj do ulubionych", use_container_width=True):
-                    add_favorite(selected)
-                    st.session_state.favorites = get_favorites()
-                    st.rerun()
-
-            st.markdown("**Nie słychać?** Naciśnij ▶️ i sprawdź głośność 🔊")
-
-        else:
-            st.info("Wybierz stację z lewej 👈")
-            st.markdown("### 🎄 Wesołych Świąt! 🎅")
 
 # ==================================================================
 # ZAKŁADKA 2: GAZETKI SPOŻYWCZE
@@ -252,6 +196,107 @@ with tab3:
                 </div>
                 """
                 st.markdown(html, unsafe_allow_html=True)
+
+# ================================
+# FIXED FOOTER Z PLAYEREM (ZAWSZE NA DOLE)
+# ================================
+if st.session_state.selected_station:
+    # Custom CSS dla fixed footera
+    st.markdown("""
+    <style>
+        .fixed-footer {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            background-color: #f0f2f6;  /* Kolor tła Streamlit */
+            padding: 10px;
+            box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
+            z-index: 1000;  /* Żeby był nad innymi elementami */
+        }
+        .stApp { margin-bottom: 100px; }  /* Dodaj margines na dole, żeby nie nachodził na treść */
+    </style>
+    """, unsafe_allow_html=True)
+
+    # Kontener footera
+    footer = st.container()
+    with footer:
+        st.markdown('<div class="fixed-footer">', unsafe_allow_html=True)
+        
+        selected = st.session_state.selected_station
+        original_url = selected.get('url_resolved') or selected.get('url', '')
+        
+        st.markdown(f"### **{selected['name']}** 🔊")
+        st.caption(f"{selected.get('tags', 'brak')} • {selected.get('bitrate', '?')} kbps")
+        
+        candidates = []
+        name_lower = selected['name'].lower()
+        for key, urls in station_overrides.items():
+            if key in name_lower:
+                candidates.extend(urls)
+        real_urls = get_real_stream_url(selected['name'], original_url)
+        for u in real_urls:
+            if u not in candidates:
+                candidates.append(u)
+        if original_url and original_url not in candidates:
+            candidates.append(original_url)
+        
+        play_url = candidates[0] if candidates else original_url
+        audio_type = get_audio_format(play_url)
+        
+        try:
+            from streamlit_audio_stream_player import st_audio_stream_player
+            
+            if play_url:
+                st_audio_stream_player(
+                    url=play_url,
+                    autoplay=True,
+                    show_controls=True,
+                    volume=0.8,
+                    height=140,  # dopasuj do footera
+                    key=f"player_{selected['name']}"  # lub stały "main_radio_player"
+                )
+            else:
+                st.info("Wybierz stację...")
+        except ImportError:
+            st.warning("Zainstaluj streamlit-audio-stream-player dla lepszego playera")
+            # fallback do starego kodu
+            if play_url.endswith('.m3u8') or 'playlist.m3u8' in play_url:
+                try:
+                    st_player(play_url, playing=True, height=100)
+                except:
+                    st.error("Błąd HLS")
+            else:
+                cors_attr = 'crossOrigin="anonymous"' if "redcdn" in play_url.lower() else ""
+                audio_html = f"""
+                <audio controls autoplay style="width:100%; height:60px;" {cors_attr}>
+                    <source src="{play_url}" type="{audio_type}">
+                </audio>
+                <script>document.querySelector('audio').volume = 0.8;</script>
+                """
+                st.components.v1.html(audio_html, height=120)
+        
+        col_stop, col_fav = st.columns(2)
+        with col_stop:
+            if st.button("🔇 Zatrzymaj", use_container_width=True):
+                st.session_state.selected_station = None
+                st.rerun()
+        with col_fav:
+            if any(fav[0] == selected['name'] for fav in st.session_state.favorites):
+                st.success("❤️ W ulubionych")
+            else:
+                if st.button("❤️ Dodaj do ulubionych", use_container_width=True):
+                    add_favorite(selected)
+                    st.session_state.favorites = get_favorites()
+                    st.rerun()
+        
+        st.markdown("**Nie słychać?** Naciśnij ▶️ i sprawdź głośność 🔊")
+        st.markdown("**Jeśli radio się zacina – przełącz na inną stację lub sprawdź WiFi / mobilny internet**")
+        
+        st.markdown('</div>', unsafe_allow_html=True)
+else:
+    # Jeśli nic nie gra, pokaż placeholder lub nic
+    pass
 
 # ================================
 # STOPKA
